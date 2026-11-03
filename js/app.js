@@ -18,7 +18,10 @@
   function sc(cid) { return LX.scriptClass(cid); }
 
   function nav(active) {
-    var links = [['#/', '首页'], ['#/course/yi', '彝语'], ['#/course/bo', '藏语'], ['#/method', '学习方法'], ['#/settings', '设置']];
+    var links = [['#/', '首页']].concat(
+      LX.courseOrder.map(function (cid) { return ['#/course/' + cid, LX.courses[cid].name]; }),
+      [['#/method', '学习方法'], ['#/settings', '设置']]
+    );
     return '<header class="top"><a class="brand" href="#/"><span class="yi">ꆈ</span><span class="bo">བོད</span> 彝藏语学堂</a><nav>' +
       links.map(function (l) { return '<a href="' + l[0] + '"' + (l[0] === active ? ' class="on"' : '') + '>' + l[1] + '</a>'; }).join('') +
       '</nav></header>';
@@ -51,19 +54,24 @@
   /* ---------- 词卡、会话：练习和课文页共用 ---------- */
   LX.itemCardHTML = function (cid, item) {
     var html = '<div class="ic-script"><span class="' + sc(cid) + ' huge">' + esc(item.s) + '</span></div>';
-    if (cid === 'yi') {
-      html += '<div class="ic-roman">' + esc(LX.roman(cid, item)) + '</div>';
+    if (cid === 'yi' || cid === 'lisu' || cid === 'ug') {
+      if (item.t === 'letter') {
+        html += '<div class="ic-roman">字母 <b>' + esc(item.w || LX.roman(cid, item)) + '</b>　读 <b>' + esc(item.p || item.m) + '</b></div>';
+      } else {
+        html += '<div class="ic-roman">' + esc(LX.roman(cid, item)) + '</div>';
+      }
     } else if (item.t === 'letter') {
       html += '<div class="ic-roman">字母名 <b>' + esc(item.w) + '</b>　读 <b>' + esc(item.p) + '</b>' +
         (item.tone ? '　<span class="tone-' + item.tone + '">' + (item.tone === 'high' ? '高调' : '低调') + '</span>' : '') + '</div>';
     } else {
-      html += '<div class="ic-roman">' + esc(item.p || '') + '<small>威利转写 ' + esc(item.w || '') + '</small></div>';
+      var wLabel = cid === 'mn' ? '传统蒙文转写 ' : '威利转写 ';
+      html += '<div class="ic-roman">' + esc(item.p || '') + '<small>' + wLabel + esc(item.w || '') + '</small></div>';
     }
     if (item.t !== 'letter') html += '<div class="ic-mean">' + esc(item.m) + '</div>';
     if (cid === 'yi') html += yiBreakdown(item.s);
     if (item.ex) {
-      html += '<div class="ic-ex">例词：<span class="bo">' + esc(item.ex.s) + '</span> ' + esc(item.ex.p) +
-        ' <small>(' + esc(item.ex.w) + ')</small> ' + esc(item.ex.m) + '</div>';
+      html += '<div class="ic-ex">例词：<span class="' + sc(cid) + '">' + esc(item.ex.s) + '</span> ' + esc(item.ex.p || '') +
+        (item.ex.w ? ' <small>(' + esc(item.ex.w) + ')</small>' : '') + ' ' + esc(item.ex.m) + '</div>';
     }
     html += '<div class="ic-tools">' + audioBtn(cid, item.s) + recBtn() + '</div>';
     return '<div class="item-card">' + html + '</div>';
@@ -86,7 +94,7 @@
 
   LX.itemSummaryHTML = function (cid, item) {
     if (!item) return '';
-    var r = cid === 'bo' && item.t !== 'letter' ? [item.p, item.w].filter(Boolean).join(' · ') : LX.roman(cid, item);
+    var r = (cid === 'bo' || cid === 'mn') && item.t !== 'letter' ? [item.p, item.w].filter(Boolean).join(' · ') : LX.roman(cid, item);
     return '<span class="' + sc(cid) + '">' + esc(item.s) + '</span> <span class="rom-inline">' + esc(r) + '</span> ' +
       (item.t === 'letter' ? esc(item.m) : '= ' + esc(item.m));
   };
@@ -130,13 +138,13 @@
         '<div class="progress"><i style="width:' + Math.round(done / c.lessons.length * 100) + '%"></i></div>' +
         '<p class="muted">已完成 ' + done + ' / ' + c.lessons.length + ' 课 · 已学 ' + cnt.learned + ' 个词' + (cnt.strong ? '，其中 ' + cnt.strong + ' 个已牢固' : '') + '</p>' +
         '<div class="cc-actions">' +
-        (next ? '<a class="btn primary" href="' + lessonHref(cid, next) + '">' + (done ? '继续：' : '开始：') + esc(next.title) + '</a>' : '<span class="muted">已学完现有课程，接下来的课正在规划中</span>') +
+        (next ? '<a class="btn primary" href="' + lessonHref(cid, next) + '">' + (done ? '继续：' : '开始：') + esc(next.title) + '</a>' : '<span class="muted">已学完本门全部 ' + c.lessons.length + ' 课！可随时复习或重练</span>') +
         '<a class="btn' + (cnt.due ? ' due' : '') + '" href="#/review/' + cid + '">复习' + (cnt.due ? '（' + cnt.due + '）' : '') + '</a></div>' +
         '<div class="cc-links"><a href="#/course/' + cid + '">课程地图</a><a href="#/script/' + cid + '">文字表</a><a href="#/words/' + cid + '">词表</a></div>' +
         '</div>';
     }).join('');
     page('#/', '<section class="hero"><h1>彝藏语学堂</h1>' +
-      '<p>一个人用的彝语、藏语学习站：短课、对话、讲解、练习、间隔复习。</p>' +
+      '<p>多民族语言互动学习站（彝语、藏语、傈僳语、维吾尔语、蒙古语）：短课、对话、讲解、主动回忆练习、间隔复习。</p>' +
       '<div class="stats"><span>🔥 连续学习 <b>' + streak + '</b> 天</span>' +
       '<span>今天 <b>' + day.xp + '</b> / ' + goal + ' 分</span>' +
       '<span class="goalbar"><i style="width:' + Math.min(100, Math.round(day.xp / goal * 100)) + '%"></i></span></div></section>' +
@@ -230,9 +238,9 @@
     var l = LX.getLesson(cid, lid);
     if (!l) return notFound();
     var words = '<table class="wordtable">' + (l.words || []).map(function (w) {
-      var r = cid === 'bo' ? (w.t === 'letter' ? w.w + ' · 读 ' + w.p : (w.p || '') + ' · ' + (w.w || '')) : LX.roman(cid, w);
+      var r = (cid === 'bo' || cid === 'mn') ? (w.t === 'letter' ? w.w + ' · 读 ' + w.p : (w.p || '') + ' · ' + (w.w || '')) : LX.roman(cid, w);
       return '<tr><td class="' + sc(cid) + '">' + esc(w.s) + '</td><td class="rom-inline">' + esc(r) + '</td><td>' + esc(w.m) +
-        (w.ex ? '<br><small>例：<span class="bo">' + esc(w.ex.s) + '</span> ' + esc(w.ex.p) + ' ' + esc(w.ex.m) + '</small>' : '') + '</td><td>' + audioBtn(cid, w.s) + '</td></tr>';
+        (w.ex ? '<br><small>例：<span class="' + sc(cid) + '">' + esc(w.ex.s) + '</span> ' + esc(w.ex.p || '') + ' ' + esc(w.ex.m) + '</small>' : '') + '</td><td>' + audioBtn(cid, w.s) + '</td></tr>';
     }).join('') + '</table>';
     var tips = (l.tips || []).map(function (t) {
       return '<div class="card tip tip-' + (t.kind || 'grammar') + '"><div class="tip-kind">' + ({ pron: '发音', grammar: '语法', culture: '文化' }[t.kind] || '提示') + '</div><h3>' + esc(t.title) + '</h3><div class="tip-body">' + (typeof t.html === 'function' ? t.html() : t.html) + '</div></div>';
@@ -281,6 +289,9 @@
   function script(cid, q) {
     if (cid === 'yi') return yiScript(q);
     if (cid === 'bo') return boScript();
+    if (cid === 'lisu') return lisuScript();
+    if (cid === 'ug') return ugScript();
+    if (cid === 'mn') return mnScript();
     notFound();
   }
 
@@ -342,6 +353,54 @@
     inp.addEventListener('input', function () { out.textContent = LX.boWylie(inp.value); });
   }
 
+  function lisuScript() {
+    var A = LX.LISU_ALPHA;
+    page('#/course/lisu', '<h1>老傈僳文（富能仁字母）字母表</h1>' +
+      '<p>老傈僳文（Fraser Script，Unicode <code>U+A4D0–U+A4FF</code>）由正写与倒转的大写拉丁字母组成，包含 30 个辅音字母、10 个元音字母和 6 个标点式声调符号。</p>' +
+      '<section class="card"><h2>30 个辅音字母</h2>' + LX.tpl.lisuConsonantTable(0, 30) + '</section>' +
+      '<section class="card"><h2>10 个元音字母</h2>' + LX.tpl.lisuVowelTable() + '</section>' +
+      '<section class="card"><h2>6 个声调符号</h2>' + LX.tpl.lisuToneTable() + '</section>' +
+      '<section class="card tool"><h2>老傈僳文 ⇄ 拼音转换</h2><p class="muted">贴入老傈僳文得到拉丁转写；输入拼音（如 <code>li-su</code> 或 <code>a-pa</code>）得到老傈僳文。</p>' +
+      '<textarea class="conv-in lisu" rows="3" placeholder="ꓡꓲꓢꓴ 或 li-su"></textarea><div class="conv-out"></div></section>', 'lisu');
+    var inp = app.querySelector('.conv-in'), out = app.querySelector('.conv-out');
+    inp.addEventListener('input', function () {
+      var v = inp.value;
+      if (Array.from(v).some(LX.isLisu)) { out.className = 'conv-out'; out.textContent = LX.lisuRoman(v); }
+      else { out.className = 'conv-out lisu'; out.textContent = LX.lisuFromRoman(v); }
+    });
+  }
+
+  function ugScript() {
+    page('#/course/ug', '<h1>维吾尔文字母表（老维文 ⇄ 拉丁维文 ULY）</h1>' +
+      '<p>现代维吾尔文字母表共 32 个字母（8 个元音、24 个辅音），从右往左书写。与阿拉伯文不同，维吾尔文把所有元音都完整写出来，词首元音前固定加静音隔音符 <span class="ug">ئ</span>（hemze）。</p>' +
+      '<section class="card"><h2>8 个元音字母（和谐分组）</h2>' + LX.tpl.ugVowelTable() + '</section>' +
+      '<section class="card"><h2>24 个辅音字母</h2>' + LX.tpl.ugConsonantTable(0, 24) + '</section>' +
+      '<section class="card tool"><h2>维吾尔文 ⇄ 拉丁维文（ULY）转换</h2><p class="muted">贴入维吾尔文自动转成拉丁维文（ULY）；输入拉丁维文（如 <code>yaxshimusiz</code>）转成维吾尔文。</p>' +
+      '<textarea class="conv-in ug" rows="3" placeholder="ياخشىمۇسىز 或 yaxshimusiz"></textarea><div class="conv-out"></div></section>', 'ug');
+    var inp = app.querySelector('.conv-in'), out = app.querySelector('.conv-out');
+    inp.addEventListener('input', function () {
+      var v = inp.value;
+      if (Array.from(v).some(LX.isUg)) { out.className = 'conv-out'; out.textContent = LX.ugULY(v); }
+      else { out.className = 'conv-out ug'; out.textContent = LX.ugFromULY(v); }
+    });
+  }
+
+  function mnScript() {
+    page('#/course/mn', '<h1>传统蒙文字母表（胡都木蒙文）</h1>' +
+      '<p>传统蒙古文（Hudum Mongolian，Unicode <code>U+1800–U+18AF</code>）包含 7 个基本元音和 20 多个辅音字母，严格遵循元音和谐律（阳性、阴性、中性元音）与格助词黏着规则。</p>' +
+      '<section class="card"><h2>7 个元音字母与元音和谐</h2>' + LX.tpl.mnVowelTable() + '</section>' +
+      '<section class="card"><h2>常用辅音字母</h2>' + LX.tpl.mnConsonantTable(0, 20) + '</section>' +
+      '<section class="card"><h2>常用格助词与后缀</h2>' + LX.tpl.mnCaseTable() + '</section>' +
+      '<section class="card tool"><h2>传统蒙文 ⇄ 拉丁转写转换</h2><p class="muted">贴入传统蒙文转成拉丁转写；输入拉丁转写（如 <code>sayin bayina</code>）转成传统蒙文。</p>' +
+      '<textarea class="conv-in mn" rows="3" placeholder="ᠰᠠᠶᠢᠨ ᠪᠠᠶᠢᠨ᠎ᠠ 或 sayin bayina"></textarea><div class="conv-out"></div></section>', 'mn');
+    var inp = app.querySelector('.conv-in'), out = app.querySelector('.conv-out');
+    inp.addEventListener('input', function () {
+      var v = inp.value;
+      if (Array.from(v).some(LX.isMn)) { out.className = 'conv-out'; out.textContent = LX.mnWylie(v); }
+      else { out.className = 'conv-out mn'; out.textContent = LX.mnFromWylie(v); }
+    });
+  }
+
   /* ---------- 词表 ---------- */
   function words(cid, q) {
     var c = LX.courses[cid];
@@ -349,7 +408,7 @@
     var all = LX.allItems(cid);
     var rows = all.map(function (x) {
       var w = x.item;
-      var r = cid === 'bo' ? (w.t === 'letter' ? w.w + ' · 读 ' + w.p : (w.p || '') + ' · ' + (w.w || '')) : LX.roman(cid, w);
+      var r = (cid === 'bo' || cid === 'mn') ? (w.t === 'letter' ? w.w + ' · 读 ' + w.p : (w.p || '') + ' · ' + (w.w || '')) : LX.roman(cid, w);
       var rec = LX.srs.get(x.key);
       var state = !rec ? 'new' : (rec.due <= Date.now() ? 'due' : 'learned');
       return '<tr data-state="' + state + '" data-text="' + esc((w.s + ' ' + r + ' ' + w.m).toLowerCase()) + '">' +
@@ -394,13 +453,12 @@
       '<section class="card"><h2>课程路线图</h2>' + stageList + '</section>' +
       '<section class="card"><h2>建议的节奏</h2><ul>' +
       '<li><b>每天 15–20 分钟：</b>先清空到期复习，再学一课。宁可每天少一点，也不要一周突击一次。</li>' +
-      '<li><b>两门语言：</b>先把一门的「文字与发音」阶段学完再开始另一门；进入会话阶段后可以隔天交替。</li>' +
+      '<li><b>多语言学习：</b>先把一门的「文字与发音」阶段学完再开始另一门；进入会话阶段后可以隔天交替。</li>' +
       '<li><b>朗读和跟读：</b>每课学完打开「课文」页，大声朗读会话，用「跟读」按钮录音对比。</li>' +
       '<li><b>找母语者：</b>本站暂时没有真人录音。有条件的话，请会说的朋友帮忙读课文并录音，放进 audio 文件夹（做法见仓库里的 docs/content-guide.md）。</li></ul></section>' +
       '<section class="card"><h2>内容来源与准确性</h2><ul>' +
-      '<li>彝语会话取自 BabelStone 的《600 Phrases in the Liangshan Yi Dialect》（《凉山彝语会话六百句》英译本），彝文拼音由 Unicode 字符名自动生成。</li>' +
-      '<li>标「改编」的句子是替换原句词语得到的，没有经母语者核对。</li>' +
-      '<li>藏语会话是本站编写的常用句，拼写用程序核对过威利转写；注音是简化方案，不标声调，请以母语者发音为准。</li>' +
+      '<li>彝语会话取自 BabelStone 的《600 Phrases in the Liangshan Yi Dialect》（《凉山彝语会话六百句》英译本）及凉山日常会话与传统谚语材料，彝文拼音由 Unicode 字符名自动生成。</li>' +
+      '<li>藏语、傈僳语、维吾尔语、蒙古语会话为根据标准教材与词典编写的常用句，并用自动转写程序核对拼写；实际发音请以母语者和有声教材为准。</li>' +
       '<li>完整的来源列表见仓库里的 docs/sources.md。</li></ul></section>');
   }
 
@@ -409,7 +467,7 @@
     var s = LX.store.data.settings;
     page('#/settings', '<h1>设置</h1><section class="card form">' +
       '<label><input type="checkbox" name="roman"' + (s.roman ? ' checked' : '') + '> 在题目和会话里显示拼音 / 注音</label>' +
-      '<label>藏文的拉丁字母写法 <select name="boRoman"><option value="p">简易注音（读音）</option><option value="w">威利转写（拼写）</option><option value="both">两种都显示</option></select></label>' +
+      '<label>藏文与蒙文的拉丁字母写法 <select name="boRoman"><option value="p">简易注音（口语读音）</option><option value="w">书面转写（威利 / 拉丁转写）</option><option value="both">两种都显示</option></select></label>' +
       '<label>每日目标 <select name="goal"><option value="15">15 分</option><option value="30">30 分</option><option value="50">50 分</option><option value="80">80 分</option></select></label>' +
       '<label>外观 <select name="theme"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>' +
       '<label><input type="checkbox" name="big"' + (s.big ? ' checked' : '') + '> 大字号</label>' +
@@ -461,7 +519,11 @@
     if (tok) {
       var cid = document.body.dataset.course;
       var g = cid && LX.glossary(cid)[tok.dataset.tok];
-      var r = cid === 'yi' ? LX.yiPinyin(tok.dataset.tok) : LX.boWylie(tok.dataset.tok);
+      var r = cid === 'yi' ? LX.yiPinyin(tok.dataset.tok)
+        : cid === 'lisu' ? LX.lisuRoman(tok.dataset.tok)
+        : cid === 'ug' ? LX.ugULY(tok.dataset.tok)
+        : cid === 'mn' ? LX.mnWylie(tok.dataset.tok)
+        : LX.boWylie(tok.dataset.tok);
       pop.innerHTML = '<b class="' + sc(cid) + '">' + esc(tok.dataset.tok) + '</b> <small>' + esc(r) + '</small><br>' + (g ? esc(g.join('；')) : '<span class="muted">（词表里还没有这个词）</span>');
       var rc = tok.getBoundingClientRect();
       pop.hidden = false;

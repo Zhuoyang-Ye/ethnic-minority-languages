@@ -407,7 +407,12 @@
     var toks = LX.tokens(st.line);
     var lineHTML = toks.map(function (t, i) {
       var inner = i === st.idx ? '<span class="blank">＿＿</span>' + esc(LX.tokenTail(t)) : esc(t);
-      return '<span class="tok">' + inner + '</span>' + (cid === 'bo' && i < toks.length - 1 && !/་$/.test(t) ? ' ' : '');
+      var sp = '';
+      if (i < toks.length - 1) {
+        if (cid === 'bo') { if (!/་$/.test(t)) sp = ' '; }
+        else if (cid !== 'yi') sp = ' ';
+      }
+      return '<span class="tok">' + inner + '</span>' + sp;
     }).join('');
     this.shell('<h2 class="q-title">' + esc(st.title) + '</h2>' +
       '<div class="prompt-line">' + (st.line.who ? '<div class="who">' + esc(st.line.who) + '</div>' : '') +

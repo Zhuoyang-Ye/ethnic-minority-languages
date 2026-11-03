@@ -1,4 +1,4 @@
-/* 核心模块：课程注册、文字工具（彝文拼音、藏文威利转写）、显示辅助、进度存储、间隔复习。
+/* 核心模块：课程注册、文字工具（彝文拼音、藏文威利转写、傈僳文转写、维吾尔文 ULY、传统蒙文转写）、显示辅助、进度存储、间隔复习。
    全部挂在 window.LX 上；不需要构建工具，直接用 <script> 引入即可（也能在 file:// 下打开）。 */
 (function () {
   'use strict';
@@ -85,7 +85,7 @@
     return out;
   };
 
-  /* 词汇表：彝文/藏文 → 释义列表（点课文里的词可以查） */
+  /* 词汇表：文字 → 释义列表（点课文里的词可以查） */
   var glossCache = {};
   LX.glossary = function (cid) {
     if (glossCache[cid]) return glossCache[cid];
@@ -246,26 +246,274 @@
     return String(s || '').split(/[་།༎\s]+/).filter(Boolean);
   };
 
+  /* ---------- 傈僳文（老傈僳文 / 富能仁字母 Fraser Script U+A4D0–U+A4FF） ---------- */
+  var LISU_CONS = {
+    'ꓐ': 'b', 'ꓑ': 'p', 'ꓒ': 'ph', 'ꓓ': 'd', 'ꓔ': 't', 'ꓕ': 'th',
+    'ꓖ': 'g', 'ꓗ': 'k', 'ꓘ': 'kh', 'ꓙ': 'j', 'ꓚ': 'c', 'ꓛ': 'ch',
+    'ꓜ': 'dz', 'ꓝ': 'ts', 'ꓞ': 'tsh', 'ꓟ': 'm', 'ꓠ': 'n', 'ꓡ': 'l',
+    'ꓢ': 's', 'ꓣ': 'z', 'ꓤ': 'rr', 'ꓥ': 'ng', 'ꓦ': 'v', 'ꓧ': 'h',
+    'ꓨ': 'hh', 'ꓩ': 'f', 'ꓪ': 'w', 'ꓫ': 'sh', 'ꓬ': 'y', 'ꓭ': 'gh'
+  };
+  var LISU_VOWS = {
+    'ꓮ': 'a', 'ꓯ': 'ae', 'ꓰ': 'e', 'ꓱ': 'eu', 'ꓲ': 'i',
+    'ꓳ': 'o', 'ꓴ': 'u', 'ꓵ': 'ue', 'ꓶ': 'uh', 'ꓷ': 'oe'
+  };
+  var LISU_TONES = {
+    'ꓸ': 't', 'ꓹ': 'x', 'ꓺ': 'd', 'ꓻ': 'l', 'ꓼ': 'q', 'ꓽ': 'r'
+  };
+
+  LX.isLisu = function (ch) { var c = ch.codePointAt(0); return c >= 0xA4D0 && c <= 0xA4FF; };
+
+  /* 把一个傈僳文词切成音节：支持连字符或自动按「辅音+(介音)+元音+(声调)」切分 */
+  LX.lisuSyllables = function (s) {
+    var clean = LX.tileLabel(String(s || '')).trim();
+    if (!clean) return [];
+    if (/[\s-]/.test(clean)) return clean.split(/[\s-]+/).filter(Boolean);
+    var chars = Array.from(clean), syls = [], cur = '';
+    for (var i = 0; i < chars.length; i++) {
+      var ch = chars[i], next = chars[i + 1];
+      if (!cur) {
+        cur = ch;
+      } else if (LISU_TONES[ch]) {
+        cur += ch;
+        syls.push(cur);
+        cur = '';
+      } else if (LISU_VOWS[ch]) {
+        cur += ch;
+        if (!next || !LISU_TONES[next]) { syls.push(cur); cur = ''; }
+      } else if (LISU_CONS[ch]) {
+        // 介音 ꓪ (w) / ꓬ (y) 跟在辅音后面且后面是元音时，算同一个音节
+        if ((ch === 'ꓪ' || ch === 'ꓬ') && cur.length === 1 && LISU_CONS[cur] && next && LISU_VOWS[next]) {
+          cur += ch;
+        } else {
+          syls.push(cur);
+          cur = ch;
+        }
+      } else {
+        cur += ch;
+      }
+    }
+    if (cur) syls.push(cur);
+    return syls;
+  };
+
+  function lisuSylRoman(syl) {
+    var chars = Array.from(syl), ini = '', vow = '', tone = '';
+    chars.forEach(function (ch) {
+      if (LISU_CONS[ch]) ini += LISU_CONS[ch];
+      else if (LISU_VOWS[ch]) vow += LISU_VOWS[ch];
+      else if (LISU_TONES[ch]) tone += LISU_TONES[ch];
+      else vow += ch;
+    });
+    if (ini && !vow) vow = 'a';
+    return ini + vow + tone;
+  }
+
+  LX.lisuRoman = function (s) {
+    var P = { '꓾': ',', '꓿': '.', '，': ',', '。': '.', '？': '?', '！': '!' };
+    return String(s || '').trim().split(/\s+/).filter(Boolean).map(function (tok) {
+      var tail = '', core = tok;
+      while (core.length && P[core.slice(-1)]) {
+        tail = P[core.slice(-1)] + tail;
+        core = core.slice(0, -1);
+      }
+      var syls = LX.lisuSyllables(core);
+      return syls.map(lisuSylRoman).join('-') + tail;
+    }).join(' ');
+  };
+
+  /* 傈僳语拼音 → 老傈僳文（转换工具用） */
+  var lisuConsRev = {}, lisuVowRev = {}, lisuToneRev = {};
+  Object.keys(LISU_CONS).forEach(function (k) { lisuConsRev[LISU_CONS[k]] = k; });
+  Object.keys(LISU_VOWS).forEach(function (k) { lisuVowRev[LISU_VOWS[k]] = k; });
+  Object.keys(LISU_TONES).forEach(function (k) { lisuToneRev[LISU_TONES[k]] = k; });
+  var LISU_INI_SORTED = Object.keys(lisuConsRev).sort(function (a, b) { return b.length - a.length; });
+  var LISU_VOW_SORTED = Object.keys(lisuVowRev).sort(function (a, b) { return b.length - a.length; });
+
+  LX.lisuFromRoman = function (text) {
+    return String(text || '').trim().split(/\s+/).filter(Boolean).map(function (word) {
+      return word.split('-').map(function (syl) {
+        var s = syl.toLowerCase(), tone = '';
+        if (/[txdlqr]$/.test(s)) { tone = lisuToneRev[s.slice(-1)] || ''; s = s.slice(0, -1); }
+        var out = '';
+        for (var i = 0; i < LISU_INI_SORTED.length; i++) {
+          var k = LISU_INI_SORTED[i];
+          if (s.indexOf(k) === 0) { out += lisuConsRev[k]; s = s.slice(k.length); break; }
+        }
+        if ((s.indexOf('w') === 0 || s.indexOf('y') === 0) && s.length > 1) {
+          out += lisuConsRev[s[0]]; s = s.slice(1);
+        }
+        for (var j = 0; j < LISU_VOW_SORTED.length; j++) {
+          var v = LISU_VOW_SORTED[j];
+          if (s === v) { out += lisuVowRev[v]; s = ''; break; }
+        }
+        return (out && !s) ? out + tone : syl;
+      }).join('');
+    }).join(' ');
+  };
+
+  /* ---------- 维吾尔文（老维文 Perso-Arabic ⇄ 拉丁维文 ULY） ---------- */
+  var UG_MAP = {
+    'ا': 'a', 'ە': 'e', 'ب': 'b', 'پ': 'p', 'ت': 't', 'ج': 'j', 'چ': 'ch', 'خ': 'x',
+    'د': 'd', 'ر': 'r', 'ز': 'z', 'ژ': 'zh', 'س': 's', 'ش': 'sh', 'غ': 'gh', 'ف': 'f',
+    'ق': 'q', 'ك': 'k', 'گ': 'g', 'ڭ': 'ng', 'ل': 'l', 'م': 'm', 'ن': 'n', 'ھ': 'h',
+    'و': 'o', 'ۇ': 'u', 'ۆ': 'ö', 'ۈ': 'ü', 'ۋ': 'w', 'ې': 'ë', 'ى': 'i', 'ي': 'y',
+    '،': ',', '؛': ';', '؟': '?'
+  };
+  var UG_VOWELS = { 'ا': 1, 'ە': 1, 'و': 1, 'ۇ': 1, 'ۆ': 1, 'ۈ': 1, 'ې': 1, 'ى': 1 };
+
+  LX.isUg = function (ch) { var c = ch.codePointAt(0); return c >= 0x0600 && c <= 0x06FF; };
+
+  LX.ugULY = function (text) {
+    return String(text || '').trim().split(/\s+/).filter(Boolean).map(function (tok) {
+      var chars = Array.from(tok), out = '';
+      for (var i = 0; i < chars.length; i++) {
+        var ch = chars[i];
+        if (ch === 'ئ') {
+          if (i > 0 && chars[i - 1] !== '-') out += '\'';
+        } else if (UG_MAP[ch] != null) {
+          out += UG_MAP[ch];
+        } else {
+          out += ch;
+        }
+      }
+      return out;
+    }).join(' ');
+  };
+
+  /* 拉丁维文 ULY → 老维文（转换工具用） */
+  var ugRev = {};
+  Object.keys(UG_MAP).forEach(function (k) { ugRev[UG_MAP[k]] = k; });
+  var UG_LAT_VOW = { 'a': 1, 'e': 1, 'o': 1, 'u': 1, 'ö': 1, 'ü': 1, 'ë': 1, 'é': 1, 'i': 1 };
+
+  LX.ugFromULY = function (text) {
+    return String(text || '').trim().split(/\s+/).filter(Boolean).map(function (word) {
+      var w = word.toLowerCase().replace(/é/g, 'ë'), out = '', i = 0;
+      while (i < w.length) {
+        var two = w.slice(i, i + 2), one = w[i];
+        if (one === '\'') {
+          out += 'ئ'; i += 1;
+        } else if (ugRev[two]) {
+          out += ugRev[two]; i += 2;
+        } else if (UG_LAT_VOW[one]) {
+          if (i === 0) out += 'ئ';
+          out += ugRev[one]; i += 1;
+        } else if (ugRev[one]) {
+          out += ugRev[one]; i += 1;
+        } else {
+          out += one; i += 1;
+        }
+      }
+      return out;
+    }).join(' ');
+  };
+
+  /* 维吾尔文词切分（拼词练习用：多词短语按空格切，单词按音节切） */
+  LX.ugSyllables = function (s) {
+    var clean = LX.tileLabel(String(s || '')).trim();
+    if (!clean) return [];
+    if (/\s/.test(clean)) return clean.split(/\s+/).filter(Boolean);
+    var chars = Array.from(clean);
+    // 找出每个元音的位置，按 CV(C) 切分音节
+    var vIdxs = [];
+    chars.forEach(function (ch, idx) { if (UG_VOWELS[ch]) vIdxs.push(idx); });
+    if (vIdxs.length <= 1) return [clean];
+    var syls = [], start = 0;
+    for (var k = 0; k < vIdxs.length - 1; k++) {
+      var v1 = vIdxs[k], v2 = vIdxs[k + 1];
+      // 下一个音节从 v2 前面的一个辅音（或 ئ）开始
+      var cut = Math.max(v1 + 1, v2 - 1);
+      syls.push(chars.slice(start, cut).join(''));
+      start = cut;
+    }
+    syls.push(chars.slice(start).join(''));
+    return syls.filter(Boolean);
+  };
+
+  /* ---------- 传统蒙文（Hudum Mongolian U+1800–U+18AF） ---------- */
+  var MN_MAP = {
+    'ᠠ': 'a', 'ᠡ': 'e', 'ᠢ': 'i', 'ᠣ': 'o', 'ᠤ': 'u', 'ᠥ': 'ö', 'ᠦ': 'ü', 'ᠧ': 'ee',
+    'ᠨ': 'n', 'ᠩ': 'ng', 'ᠪ': 'b', 'ᠫ': 'p', 'ᠬ': 'q', 'ᠭ': 'g', 'ᠮ': 'm', 'ᠯ': 'l',
+    'ᠰ': 's', 'ᠱ': 'sh', 'ᠲ': 't', 'ᠳ': 'd', 'ᠴ': 'ch', 'ᠵ': 'j', 'ᠶ': 'y', 'ᠷ': 'r',
+    'ᠸ': 'v', 'ᠹ': 'f', 'ᠺ': 'k', 'ᠼ': 'ts', 'ᠽ': 'z', 'ᠾ': 'h',
+    '᠎': '-', '\u202F': '-', '᠂': ',', '᠃': '/'
+  };
+  var MN_VOWELS = { 'ᠠ': 1, 'ᠡ': 1, 'ᠢ': 1, 'ᠣ': 1, 'ᠤ': 1, 'ᠥ': 1, 'ᠦ': 1, 'ᠧ': 1 };
+
+  LX.isMn = function (ch) { var c = ch.codePointAt(0); return c >= 0x1800 && c <= 0x18AF; };
+
+  LX.mnWylie = function (text) {
+    var out = '';
+    Array.from(String(text || '')).forEach(function (ch) {
+      var code = ch.codePointAt(0);
+      if (code >= 0x180B && code <= 0x180D) return; // 自由变体选择符忽略
+      if (MN_MAP[ch] != null) out += MN_MAP[ch];
+      else out += ch;
+    });
+    return LX.normWylie(out);
+  };
+
+  var mnRev = {};
+  Object.keys(MN_MAP).forEach(function (k) { mnRev[MN_MAP[k]] = k; });
+  LX.mnFromWylie = function (text) {
+    return String(text || '').trim().split(/\s+/).filter(Boolean).map(function (word) {
+      var w = word.toLowerCase(), out = '', i = 0;
+      while (i < w.length) {
+        var two = w.slice(i, i + 2), one = w[i];
+        if (mnRev[two]) { out += mnRev[two]; i += 2; }
+        else if (mnRev[one]) { out += mnRev[one]; i += 1; }
+        else { out += one; i += 1; }
+      }
+      return out;
+    }).join(' ');
+  };
+
+  LX.mnSyllables = function (s) {
+    var clean = LX.tileLabel(String(s || '')).trim();
+    if (!clean) return [];
+    if (/[\s\u180E\u202F-]/.test(clean)) return clean.split(/[\s\u180E\u202F-]+/).filter(Boolean);
+    var chars = Array.from(clean);
+    var vIdxs = [];
+    chars.forEach(function (ch, idx) { if (MN_VOWELS[ch]) vIdxs.push(idx); });
+    if (vIdxs.length <= 1) return [clean];
+    var syls = [], start = 0;
+    for (var k = 0; k < vIdxs.length - 1; k++) {
+      var v1 = vIdxs[k], v2 = vIdxs[k + 1];
+      if (v2 === v1 + 1) continue; // 双元音/长元音归入同一音节
+      var cut = Math.max(v1 + 1, v2 - 1);
+      syls.push(chars.slice(start, cut).join(''));
+      start = cut;
+    }
+    syls.push(chars.slice(start).join(''));
+    return syls.length >= 2 ? syls : [clean];
+  };
+
   /* ---------- 显示辅助 ---------- */
-  var TAIL = /[་།༎，。？！、；：,.?!;:）)\s]+$/;
-  LX.tokens = function (line) { return String(line.s).trim().split(/\s+/); };
+  var TAIL = /[་།༎，。？！、；：,.?!;:）)؟،؛᠂᠃꓾꓿\s]+$/;
+  LX.tokens = function (line) { return String(line.s).trim().split(/[ \t\r\n]+/); };
   LX.tileLabel = function (tok) { return String(tok).replace(TAIL, ''); };
   LX.tokenTail = function (tok) { return String(tok).slice(LX.tileLabel(tok).length); };
 
-  /* 把词拼回一句话：彝文词之间不空格；藏文在音节点后不空格，在垂符后空一格 */
+  /* 把词拼回一句话：彝文词之间不空格；藏文在音节点后不空格，在垂符后空一格；其余语言词之间空一格 */
   LX.joinTokens = function (cid, toks) {
-    if (cid !== 'bo') return toks.join('');
-    var s = '';
-    toks.forEach(function (t, i) {
-      s += t;
-      if (i < toks.length - 1 && !/་$/.test(t)) s += ' ';
-    });
-    return s;
+    if (cid === 'yi') return toks.join('');
+    if (cid === 'bo') {
+      var s = '';
+      toks.forEach(function (t, i) {
+        s += t;
+        if (i < toks.length - 1 && !/་$/.test(t)) s += ' ';
+      });
+      return s;
+    }
+    return toks.join(' ');
   };
 
   /* 一个词把各个音节拆开（拼词练习的卡片） */
   LX.pieces = function (cid, s) {
     if (cid === 'bo') return LX.boSyllables(s);
+    if (cid === 'lisu') return LX.lisuSyllables(s);
+    if (cid === 'ug') return LX.ugSyllables(s);
+    if (cid === 'mn') return LX.mnSyllables(s);
     return Array.from(LX.tileLabel(s)).filter(function (ch) { return !/\s/.test(ch); });
   };
 
@@ -275,8 +523,10 @@
   LX.roman = function (cid, item, mode) {
     if (!item) return '';
     if (cid === 'yi') return item.r || LX.yiPinyin(item.s);
+    if (cid === 'lisu') return item.r || item.p || LX.lisuRoman(item.s);
+    if (cid === 'ug') return item.r || item.p || LX.ugULY(item.s);
     mode = mode || LX.settings().boRoman;
-    if (item.t === 'letter') return item.w;
+    if (item.t === 'letter') return item.w || item.p || '';
     if (mode === 'w') return item.w || '';
     if (mode === 'both') return [item.p, item.w].filter(Boolean).join(' · ');
     return item.p || item.w || '';
@@ -285,27 +535,31 @@
   /* 一句话的拉丁字母写法 */
   LX.lineRoman = function (cid, line, mode) {
     if (cid === 'yi') return LX.tokens(line).map(LX.yiPinyin).join(' ');
+    if (cid === 'lisu') return line.p || LX.lisuRoman(line.s);
+    if (cid === 'ug') return line.p || LX.ugULY(line.s);
     mode = mode || LX.settings().boRoman;
     if (mode === 'w') return line.w || '';
     if (mode === 'both') return [line.p, line.w].filter(Boolean).join('　|　');
-    return line.p || '';
+    return line.p || line.w || '';
   };
 
-  /* 每个词对应的注音（藏文用 p 里的分段，彝文自动生成） */
+  /* 每个词对应的注音（藏文/蒙文用 p 里的分段，彝文/傈僳文/维吾尔文自动生成） */
   LX.tokenRomans = function (cid, line) {
     var toks = LX.tokens(line);
     if (cid === 'yi') return toks.map(function (t) { return LX.yiPinyin(LX.tileLabel(t)); });
+    if (cid === 'lisu') return toks.map(function (t) { return LX.lisuRoman(LX.tileLabel(t)); });
+    if (cid === 'ug') return toks.map(function (t) { return LX.ugULY(LX.tileLabel(t)); });
     var mode = LX.settings().boRoman;
     var ps = String(line.p || '').trim().split(/\s+/);
     return toks.map(function (t, i) {
-      var w = LX.boWylie(LX.tileLabel(t));
+      var w = cid === 'mn' ? LX.mnWylie(LX.tileLabel(t)) : LX.boWylie(LX.tileLabel(t));
       if (mode === 'w') return w;
       var p = (ps[i] || '').replace(/[.,?!;:]+$/, '');
-      return mode === 'both' ? p + ' · ' + w : p;
+      return mode === 'both' ? p + ' · ' + w : (p || w);
     });
   };
 
-  LX.scriptClass = function (cid) { return cid === 'bo' ? 'bo' : 'yi'; };
+  LX.scriptClass = function (cid) { return cid || 'yi'; };
 
   /* 带词边界的句子 HTML：每个词一个 span，可以点开查词义 */
   LX.lineHTML = function (cid, line) {
@@ -313,12 +567,15 @@
     var html = '';
     toks.forEach(function (t, i) {
       html += '<span class="tok" data-tok="' + esc(LX.tileLabel(t)) + '">' + esc(t) + '</span>';
-      if (cid === 'bo' && i < toks.length - 1 && !/་$/.test(t)) html += ' ';
+      if (i < toks.length - 1) {
+        if (cid === 'bo') { if (!/་$/.test(t)) html += ' '; }
+        else if (cid !== 'yi') html += ' ';
+      }
     });
     return '<span class="' + LX.scriptClass(cid) + ' line-s">' + html + '</span>';
   };
 
-  /* 逐词对照（彝文/藏文、注音、注释三行对齐） */
+  /* 逐词对照（本族文字、注音、注释三行对齐） */
   LX.interlinearHTML = function (cid, line) {
     var toks = LX.tokens(line);
     var romans = LX.tokenRomans(cid, line);

@@ -27,10 +27,29 @@
 <script src="data/yi/phonology.js"></script>
 <script src="data/yi/stage0.js"></script>
 <script src="data/yi/stage1.js"></script>
+<script src="data/yi/stage2.js"></script>
+<script src="data/yi/stage3.js"></script>
 <script src="data/bo/course.js"></script>
 <script src="data/bo/alphabet.js"></script>
 <script src="data/bo/stage0.js"></script>
 <script src="data/bo/stage1.js"></script>
+<script src="data/bo/stage2.js"></script>
+<script src="data/bo/stage3.js"></script>
+<script src="data/lisu/course.js"></script>
+<script src="data/lisu/alphabet.js"></script>
+<script src="data/lisu/stage0.js"></script>
+<script src="data/lisu/stage1.js"></script>
+<script src="data/lisu/stage2.js"></script>
+<script src="data/ug/course.js"></script>
+<script src="data/ug/alphabet.js"></script>
+<script src="data/ug/stage0.js"></script>
+<script src="data/ug/stage1.js"></script>
+<script src="data/ug/stage2.js"></script>
+<script src="data/mn/course.js"></script>
+<script src="data/mn/alphabet.js"></script>
+<script src="data/mn/stage0.js"></script>
+<script src="data/mn/stage1.js"></script>
+<script src="data/mn/stage2.js"></script>
 <script src="js/exercises.js"></script>
 <script src="js/app.js"></script>
 <script>
@@ -99,7 +118,6 @@
     eq(LX.boStack('ཀ', 'ཡ'), 'ཀྱ');
     eq(LX.boStack('ཀ', 'ཝ'), 'ཀྭ');
     eq(LX.boStack('ལ', 'ཧ'), 'ལྷ');
-    // 叠字表里的每个叠字都能转写成「上 + 下 + a」
     var A = LX.BO_ALPHA, W = {};
     A.consonants.forEach(function (c) { W[c.s] = c.w.replace(/a$/, ''); });
     Object.keys(A.superscripts).forEach(function (t) {
@@ -113,6 +131,15 @@
     A.vowels.forEach(function (v) { eq(LX.boWylie(v.s), v.w, '元音 ' + v.s); });
   });
 
+  section('傈僳文、维吾尔文、传统蒙文工具', function () {
+    eq(LX.lisuRoman('ꓡꓲ-ꓢꓴ'), 'li-su');
+    eq(LX.lisuFromRoman('li-su'), 'ꓡꓲꓢꓴ');
+    eq(LX.ugULY('ياخشىمۇسىز'), 'yaxshimusiz');
+    eq(LX.ugFromULY('yaxshimusiz'), 'ياخشىمۇسىز');
+    eq(LX.mnWylie('ᠰᠠᠶᠢᠨ ᠪᠠᠶᠢᠨ᠎ᠠ'), 'sayin bayin-a');
+    eq(LX.mnFromWylie('sayin'), 'ᠰᠠᠶᠢᠨ');
+  });
+
   section('分词与拼句', function () {
     eq(LX.joinTokens('bo', ['ལགས་ཡིན།', 'ང་', 'བདེ་པོ་', 'ཡིན།']), 'ལགས་ཡིན། ང་བདེ་པོ་ཡིན།');
     eq(LX.joinTokens('bo', ['ཇ་', 'ཞིམ་པོ་', 'འདུག']), 'ཇ་ཞིམ་པོ་འདུག');
@@ -123,6 +150,9 @@
     eq(LX.tokenTail('ꋬꂻꈨꅪ，'), '，');
     eq(LX.pieces('bo', 'བཀྲ་ཤིས་བདེ་ལེགས').join('|'), 'བཀྲ|ཤིས|བདེ|ལེགས');
     eq(LX.pieces('yi', 'ꋬꂻꈨꅪ').length, 4);
+    eq(LX.pieces('lisu', 'ꓡꓲ-ꓢꓴ').length, 2);
+    ok(LX.pieces('ug', 'ياخشىمۇسىز').length >= 2, '维吾尔文多音节词切分');
+    ok(LX.pieces('mn', 'ᠰᠠᠶᠢᠨ').length >= 2, '蒙文多音节词切分');
   });
 
   section('录音登记', function () {
@@ -143,11 +173,21 @@
     ok(w.s && w.m, where + '：缺文字或释义');
     if (cid === 'yi') {
       ok(Array.from(LX.tileLabel(w.s)).every(function (ch) { return LX.YI_SYLLABLES[ch]; }), where + '：有不是规范彝文的字符');
-    } else {
+    } else if (cid === 'bo') {
       ok(/^[ༀ-࿿]+$/.test(w.s), where + '：有藏文以外的字符');
       ok(w.w && w.p, where + '：缺威利转写或注音');
       eq(LX.boWylie(w.s), LX.normWylie(w.w), where + ' 的威利转写');
       if (w.ex) eq(LX.boWylie(w.ex.s), LX.normWylie(w.ex.w), where + ' 的例词 ' + w.ex.s);
+    } else if (cid === 'lisu') {
+      ok(/^[ꓐ-꓿-]+$/.test(w.s), where + '：有老傈僳文以外的字符');
+      ok(LX.lisuRoman(w.s).length > 0, where + '：转写为空');
+    } else if (cid === 'ug') {
+      ok(/^[؀-ۿ\s\/-]+$/.test(w.s), where + '：有维吾尔文以外的字符');
+      ok(LX.ugULY(w.s).length > 0, where + '：ULY 转写为空');
+    } else if (cid === 'mn') {
+      ok(/^[ᠠ-ᡷ᠎\u202F\s-]+$/.test(w.s), where + '：有传统蒙文以外的字符');
+      ok(w.w && w.p, where + '：缺拉丁转写或口语注音');
+      eq(LX.mnWylie(w.s), LX.normWylie(w.w), where + ' 的传统蒙文转写');
     }
   }
 
@@ -163,9 +203,17 @@
       if (line.g) eq(line.g.trim().split(/\s+/).length, toks.length, where + ' 的逐词注释个数');
       if (cid === 'yi') {
         ok(Array.from(line.s).every(function (ch) { return LX.YI_SYLLABLES[ch] || YI_PUNCT.indexOf(ch) >= 0; }), where + '：有不认识的字符');
-      } else {
+      } else if (cid === 'bo') {
         ok(/^[ༀ-࿿ ]+$/.test(line.s), where + '：有藏文以外的字符');
         eq(LX.boWylie(line.s), LX.normWylie(line.w), where + ' 的威利转写');
+        eq(String(line.p).trim().split(/\s+/).length, toks.length, where + ' 的注音分段数');
+      } else if (cid === 'lisu') {
+        ok(/^[ꓐ-꓿\s，。？！、-]+$/.test(line.s), where + '：有老傈僳文以外的字符');
+      } else if (cid === 'ug') {
+        ok(/^[؀-ۿ\s,.?!:;！，。？！\-]+$/.test(line.s), where + '：有维吾尔文以外的字符');
+      } else if (cid === 'mn') {
+        ok(/^[ᠠ-ᡷ᠎\u202F᠂᠃\s-]+$/.test(line.s), where + '：有传统蒙文以外的字符');
+        eq(LX.mnWylie(line.s), LX.normWylie(line.w), where + ' 的蒙文转写');
         eq(String(line.p).trim().split(/\s+/).length, toks.length, where + ' 的注音分段数');
       }
     });
@@ -175,6 +223,10 @@
     section('课程数据：' + LX.courses[cid].name, function () {
       var c = LX.courses[cid], ids = {};
       ok(c.lessons.length >= 10, '课太少');
+      c.stages.forEach(function (stg) {
+        ok(!stg.planned || stg.planned.length === 0, cid + ' ' + stg.id + ' 仍有未实现的「规划中」空壳课');
+        ok(stg.lessons.length > 0, cid + ' ' + stg.id + ' 阶段没有课程');
+      });
       c.lessons.forEach(function (l) {
         ok(!ids[l.id], '课 id 重复：' + l.id);
         ids[l.id] = 1;
@@ -392,9 +444,14 @@
     LX.srs.learn('yi:ꉢ');
     var app = document.getElementById('app');
     var routes = {
-      '#/': '彝藏语学堂', '#/course/yi': '入门会话', '#/course/bo': '文字与发音', '#/lesson/yi/y1-1': '路上相遇',
-      '#/text/bo/b1-3': 'ཁྱེད་རང', '#/text/yi/y1-5': 'ꄓꎸ', '#/script/yi': '音节表', '#/script/yi?tone=p': 'ꋍ', '#/script/bo': '叠字',
-      '#/words/yi': 'ꉢ', '#/words/bo': 'བཀྲ་ཤིས', '#/method': '间隔复习', '#/settings': '进度备份', '#/review/bo': '没有要复习',
+      '#/': '彝藏语学堂', '#/course/yi': '生活与农事', '#/course/bo': '语言与文化',
+      '#/course/lisu': '傈僳语', '#/course/ug': '维吾尔语', '#/course/mn': '蒙古语',
+      '#/lesson/yi/y2-1': '去干活', '#/lesson/bo/b2-1': '时间与日期',
+      '#/text/bo/b1-3': 'ཁྱེད་རང', '#/text/yi/y1-5': 'ꄓꎸ',
+      '#/script/yi': '音节表', '#/script/yi?tone=p': 'ꋍ', '#/script/bo': '叠字',
+      '#/script/lisu': '富能仁字母', '#/script/ug': '32 个字母', '#/script/mn': '胡都木蒙文',
+      '#/words/yi': 'ꉢ', '#/words/bo': 'བཀྲ་ཤིས', '#/words/lisu': 'ꓡꓲ-ꓢꓴ', '#/words/ug': 'ئۇيغۇر', '#/words/mn': 'ᠰᠠᠶᠢᠨ',
+      '#/method': '间隔复习', '#/settings': '进度备份', '#/review/bo': '没有要复习',
       '#/play/yi/y0-1': 'p-bar', '#/play/bo/b1-2?step=3': '3 / ', '#/nowhere': '找不到'
     };
     Object.keys(routes).forEach(function (h) {
