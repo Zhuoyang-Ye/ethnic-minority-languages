@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>测试运行中…</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  #out { white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; padding: 1rem; }
+  #summary { font: 600 18px system-ui, sans-serif; padding: 1rem 1rem 0; }
+</style>
+</head>
+<body>
+<!-- 数据校验与冒烟测试：用浏览器打开本页即可。不会读写你的真实学习进度。 -->
+<div id="summary">测试运行中…</div>
+<pre id="out"></pre>
+<div id="app" hidden></div>
+<div id="sandbox" hidden></div>
+<script>
+  window.__errors = [];
+  window.addEventListener('error', function (e) { window.__errors.push(e.message + ' @ ' + (e.filename || '') + ':' + (e.lineno || '')); });
+</script>
+<script src="js/core.js"></script>
+<script src="js/yi-syllables.js"></script>
+<script src="data/yi/course.js"></script>
+<script src="data/yi/phonology.js"></script>
+<script src="data/yi/stage0.js"></script>
+<script src="data/yi/stage1.js"></script>
+<script src="data/bo/course.js"></script>
+<script src="data/bo/alphabet.js"></script>
+<script src="data/bo/stage0.js"></script>
+<script src="data/bo/stage1.js"></script>
+<script src="js/exercises.js"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var U = LX.util;
+  var lines = [], fails = 0, checks = 0;
+  function ok(cond, msg) { checks++; if (!cond) { fails++; lines.push('    ✗ ' + msg); } }
+  function eq(a, b, msg) { ok(a === b, (msg ? msg + '：' : '') + '期望 ' + JSON.stringify(b) + '，实际 ' + JSON.stringify(a)); }
+  function section(name, fn) {
+    var before = fails, at = lines.length;
+    try { fn(); } catch (e) { fails++; lines.push('    ✗ 异常：' + (e && e.stack || e)); }
+    lines.splice(at, 0, (fails === before ? '✓ ' : '✗ ') + name);
+  }
+
+  /* 测试用的临时进度：不写 localStorage */
+  LX.store.save = function () {};
+  function fresh() {
+    LX.store.data = { v: 1, lessons: {}, srs: {}, days: {}, settings: { roman: true, boRoman: 'p', goal: 30, theme: 'auto', big: false } };
+  }
+  fresh();
+
+  var YI_PUNCT = ' ，。？！、；：（）';
+  function tagBalance(h, where) {
+    ['p', 'b', 'span', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'small', 'div'].forEach(function (t) {
+      var open = (h.match(new RegExp('<' + t + '(\\s|>)', 'g')) || []).length;
+      var close = (h.match(new RegExp('</' + t + '>', 'g')) || []).length;
+      ok(open === close, where + '：<' + t + '> 标签不成对（' + open + ' / ' + close + '）');
+    });
+  }
+
+  /* ---------- 文字工具 ---------- */
+  section('彝文拼音', function () {
+    eq(Object.keys(LX.YI_SYLLABLES).length, 1165, '彝文字符数');
+    eq(LX.yiPinyin('ꆏ ꇿ ꄉ ꇁ？'), 'ne kat da la?');
+    eq(LX.yiPinyin('ꋬꂺꀕ'), 'zzyr muox w');
+    eq(LX.yiPinyin('ꀉꁌ、 ꀊꂵ'), 'ax pu, a mat');
+    var p = LX.yiParse('hxat');
+    eq(p.ini + '|' + p.vow + '|' + p.tone, 'hx|a|t');
+    p = LX.yiParse('nyuop');
+    eq(p.ini + '|' + p.vow + '|' + p.tone, 'ny|uo|p');
+    p = LX.yiParse('yr');
+    eq(p.ini + '|' + p.vow + '|' + p.tone, '|yr|');
+    eq(LX.yiFromPinyin('nga op rro bbo.'), 'ꉢꀒꎂꁧ。');
+    var bad = Object.keys(LX.YI_SYLLABLES).filter(function (ch) { var py = LX.YI_SYLLABLES[ch]; return py !== 'w' && !LX.yiParse(py); });
+    eq(bad.length, 0, '所有音节都能拆成声母+韵母+声调');
+    var P = LX.YI_PHON, ser = [].concat.apply([], P.series.map(function (s) { return s.initials; }));
+    eq(ser.length, 43, '声母分组');
+    eq(new Set(ser).size, 43, '声母分组不重复');
+    LX.YI_INITIALS.forEach(function (i) { ok(P.initials[i], '缺声母说明 ' + i); });
+    ok(P.initials[''], '缺零声母说明');
+    LX.YI_VOWELS.forEach(function (v) { ok(P.vowels[v], '缺韵母说明 ' + v); });
+  });
+
+  section('藏文威利转写', function () {
+    var cases = {
+      'བཀྲ་ཤིས་བདེ་ལེགས།': 'bkra shis bde legs/', 'ངའི': "nga'i", 'བུའི': "bu'i", 'དགའི': "dga'i",
+      'གཡག': 'g.yag', 'གཡུ': 'g.yu', 'ལགས': 'lags', 'ནམས': 'nams', 'གངས': 'gangs', 'མཚན': 'mtshan',
+      'བཀའ': "bka'", 'དགའ': "dga'", 'བསྒྲུབས': 'bsgrubs', 'འདུག': "'dug", 'ཨ': 'a', 'ཨི': 'i', 'འོ': "'o",
+      'རྒྱ་མི': 'rgya mi', 'བརྒྱད': 'brgyad', 'དབུས': 'dbus', 'ཞྭ་མོ': 'zhwa mo', 'གནང': 'gnang', 'མངར': 'mngar',
+      'ལྷ་ས': 'lha sa', 'ཁྱེད་རང་གི་': 'khyed rang gi', 'ཇ་ཞིམ་པོ་འདུག ཧ་ཅང་': "ja zhim po 'dug ha cang", '༡༢': '12',
+      'ལགས་ཡིན། ང་བདེ་པོ་ཡིན།': 'lags yin/ nga bde po yin/'
+    };
+    Object.keys(cases).forEach(function (k) { eq(LX.boWylie(k), LX.normWylie(cases[k]), k); });
+    eq(LX.boStack('ར', 'ཀ'), 'རྐ');
+    eq(LX.boStack('ཀ', 'ཡ'), 'ཀྱ');
+    eq(LX.boStack('ཀ', 'ཝ'), 'ཀྭ');
+    eq(LX.boStack('ལ', 'ཧ'), 'ལྷ');
+    // 叠字表里的每个叠字都能转写成「上 + 下 + a」
+    var A = LX.BO_ALPHA, W = {};
+    A.consonants.forEach(function (c) { W[c.s] = c.w.replace(/a$/, ''); });
+    Object.keys(A.superscripts).forEach(function (t) {
+      A.superscripts[t].forEach(function (b) { eq(LX.boWylie(LX.boStack(t, b)), W[t] + W[b] + 'a', '上加 ' + t + b); });
+    });
+    Object.keys(A.subscripts).forEach(function (s) {
+      A.subscripts[s].forEach(function (b) { eq(LX.boWylie(LX.boStack(b, s)), W[b] + W[s] + 'a', '下加 ' + b + s); });
+    });
+    eq(A.consonants.length, 30, '辅音字母数');
+    A.consonants.forEach(function (c) { eq(LX.boWylie(c.s), c.w, '字母 ' + c.s); });
+    A.vowels.forEach(function (v) { eq(LX.boWylie(v.s), v.w, '元音 ' + v.s); });
+  });
+
+  section('分词与拼句', function () {
+    eq(LX.joinTokens('bo', ['ལགས་ཡིན།', 'ང་', 'བདེ་པོ་', 'ཡིན།']), 'ལགས་ཡིན། ང་བདེ་པོ་ཡིན།');
+    eq(LX.joinTokens('bo', ['ཇ་', 'ཞིམ་པོ་', 'འདུག']), 'ཇ་ཞིམ་པོ་འདུག');
+    eq(LX.joinTokens('yi', ['ꆏ', 'ꇿ', 'ꄉ', 'ꇁ？']), 'ꆏꇿꄉꇁ？');
+    eq(LX.tileLabel('ཡིན།'), 'ཡིན');
+    eq(LX.tileLabel('ཞིམ་པོ་'), 'ཞིམ་པོ');
+    eq(LX.tileLabel('ꇁ？'), 'ꇁ');
+    eq(LX.tokenTail('ꋬꂻꈨꅪ，'), '，');
+    eq(LX.pieces('bo', 'བཀྲ་ཤིས་བདེ་ལེགས').join('|'), 'བཀྲ|ཤིས|བདེ|ལེགས');
+    eq(LX.pieces('yi', 'ꋬꂻꈨꅪ').length, 4);
+  });
+
+  section('录音登记', function () {
+    var saved = LX.AUDIO;
+    LX.AUDIO = {};
+    LX.addAudio('bo', { 'བཀྲ་ཤིས་བདེ་ལེགས།': 'audio/bo/tashi.mp3', 'ཇ': 'audio/bo/ja.mp3' });
+    LX.addAudio('yi', { 'ꆏ ꇿ ꄉ ꇁ？': 'audio/yi/1-1.mp3' });
+    eq(LX.audioFor('bo', 'བཀྲ་ཤིས་ བདེ་ལེགས།'), 'audio/bo/tashi.mp3', '句子里有空格也能找到');
+    eq(LX.audioFor('bo', 'ཇ་'), 'audio/bo/ja.mp3', '词后面带音节点也能找到');
+    eq(LX.audioFor('yi', 'ꆏꇿꄉꇁ'), 'audio/yi/1-1.mp3', '不带标点也能找到');
+    eq(LX.audioFor('yi', 'ꉢ'), null, '没登记的返回 null');
+    LX.AUDIO = saved;
+  });
+
+  /* ---------- 课程数据 ---------- */
+  function checkItem(cid, l, w) {
+    var where = l.id + ' ' + w.s;
+    ok(w.s && w.m, where + '：缺文字或释义');
+    if (cid === 'yi') {
+      ok(Array.from(LX.tileLabel(w.s)).every(function (ch) { return LX.YI_SYLLABLES[ch]; }), where + '：有不是规范彝文的字符');
+    } else {
+      ok(/^[ༀ-࿿]+$/.test(w.s), where + '：有藏文以外的字符');
+      ok(w.w && w.p, where + '：缺威利转写或注音');
+      eq(LX.boWylie(w.s), LX.normWylie(w.w), where + ' 的威利转写');
+      if (w.ex) eq(LX.boWylie(w.ex.s), LX.normWylie(w.ex.w), where + ' 的例词 ' + w.ex.s);
+    }
+  }
+
+  function checkDialogue(cid, l) {
+    var d = l.dialogue;
+    ok(d.lines.length >= 4, l.id + '：会话太短');
+    d.lines.forEach(function (line, i) {
+      var where = l.id + ' 第 ' + (i + 1) + ' 句';
+      ok(d.people && line.who in d.people, where + '：说话人 ' + line.who + ' 不在 people 里');
+      ok(line.s && line.m, where + '：缺原文或翻译');
+      var toks = LX.tokens(line);
+      ok(line.g, where + '：缺逐词注释 g');
+      if (line.g) eq(line.g.trim().split(/\s+/).length, toks.length, where + ' 的逐词注释个数');
+      if (cid === 'yi') {
+        ok(Array.from(line.s).every(function (ch) { return LX.YI_SYLLABLES[ch] || YI_PUNCT.indexOf(ch) >= 0; }), where + '：有不认识的字符');
+      } else {
+        ok(/^[ༀ-࿿ ]+$/.test(line.s), where + '：有藏文以外的字符');
+        eq(LX.boWylie(line.s), LX.normWylie(line.w), where + ' 的威利转写');
+        eq(String(line.p).trim().split(/\s+/).length, toks.length, where + ' 的注音分段数');
+      }
+    });
+  }
+
+  LX.courseOrder.forEach(function (cid) {
+    section('课程数据：' + LX.courses[cid].name, function () {
+      var c = LX.courses[cid], ids = {};
+      ok(c.lessons.length >= 10, '课太少');
+      c.lessons.forEach(function (l) {
+        ok(!ids[l.id], '课 id 重复：' + l.id);
+        ids[l.id] = 1;
+        ok(l.title && l.goal && l.minutes, l.id + '：缺标题、目标或时长');
+        ok((l.words || []).length >= 4, l.id + '：词太少');
+        ok(l.kind === 'script' || l.dialogue, l.id + '：会话课缺会话');
+        (l.words || []).forEach(function (w) { checkItem(cid, l, w); });
+        if (l.dialogue) checkDialogue(cid, l);
+        (l.tips || []).forEach(function (t) {
+          var h = typeof t.html === 'function' ? t.html() : t.html;
+          ok(typeof h === 'string' && h.length > 20, l.id + '：讲解为空 ' + t.title);
+          ok(['start', 'mid', 'end'].indexOf(t.at) >= 0, l.id + '：讲解位置 at 不对 ' + t.title);
+          ok(['pron', 'grammar', 'culture'].indexOf(t.kind) >= 0, l.id + '：讲解类型 kind 不对 ' + t.title);
+          tagBalance(h, l.id + '「' + t.title + '」');
+        });
+        (l.exercises || []).forEach(function (ex, i) {
+          ok(ex.type === 'choice', l.id + ' 练习 ' + i + '：未知题型');
+          ok(ex.answer >= 0 && ex.answer < ex.options.length, l.id + ' 练习 ' + i + '：答案超出范围');
+          eq(new Set(ex.options).size, ex.options.length, l.id + ' 练习 ' + i + ' 选项不重复');
+        });
+      });
+    });
+  });
+
+  section('同一个复习条目在各课里释义一致', function () {
+    LX.courseOrder.forEach(function (cid) {
+      var seen = {};
+      LX.courses[cid].lessons.forEach(function (l) {
+        (l.words || []).forEach(function (w) {
+          var k = LX.itemKey(cid, w);
+          if (k in seen) eq(w.m, seen[k], k + ' 在 ' + l.id + ' 的释义');
+          else seen[k] = w.m;
+        });
+      });
+    });
+  });
+
+  /* ---------- 练习队列 ---------- */
+  function validateStep(cid, lid, s, i) {
+    var where = lid + ' 第 ' + (i + 1) + ' 步';
+    ok(s && s.kind, where + '：空步骤');
+    if (!s) return;
+    switch (s.kind) {
+      case 'mc':
+        ok(s.options.length >= 2, where + '：选项太少');
+        eq(s.options.filter(function (o) { return o.correct; }).length, 1, where + ' 正确选项个数');
+        eq(new Set(s.options.map(function (o) { return o.html; })).size, s.options.length, where + ' 选项不重复');
+        break;
+      case 'fill':
+        eq(s.options.filter(function (o) { return o.correct; }).length, 1, where + ' 正确选项个数');
+        eq(new Set(s.options.map(function (o) { return o.label; })).size, s.options.length, where + ' 选项不重复');
+        break;
+      case 'build':
+        ok(s.target.length >= 2, where + '：拼的块太少');
+        var bank = s.tiles.slice();
+        s.target.forEach(function (t) { var j = bank.indexOf(t); ok(j >= 0, where + '：缺卡片 ' + t); if (j >= 0) bank.splice(j, 1); });
+        break;
+      case 'match':
+        ok(s.pairs.length >= 3, where + '：配对太少');
+        eq(new Set(s.pairs.map(function (p) { return p.b; })).size, s.pairs.length, where + ' 配对右边不重复');
+        break;
+      case 'type':
+        ok(s.answers[0], where + '：没有答案');
+        break;
+      case 'tip': case 'intro': case 'dialogue': break;
+      default: ok(false, where + '：未知题型 ' + s.kind);
+    }
+  }
+
+  section('每一课都能生成合法的练习（各随机 5 次）', function () {
+    LX.courseOrder.forEach(function (cid) {
+      LX.courses[cid].lessons.forEach(function (l) {
+        for (var r = 0; r < 5; r++) {
+          var steps = LX.buildLesson(cid, l);
+          ok(steps.length >= 10, l.id + '：步骤太少');
+          steps.forEach(function (s, i) { validateStep(cid, l.id, s, i); });
+        }
+      });
+    });
+  });
+
+  /* ---------- 播放器：模拟点击 ---------- */
+  var box = document.getElementById('sandbox');
+  function answerCurrent(p, right) {
+    var st = p.cur, root = p.root;
+    function go() { root.querySelector('.p-go').click(); }
+    switch (st.kind) {
+      case 'mc':
+      case 'fill': {
+        var idx = st.options.findIndex(function (o) { return right ? o.correct : !o.correct; });
+        root.querySelector('.opt[data-i="' + idx + '"]').click();
+        go();
+        break;
+      }
+      case 'build': {
+        var order = right ? st.target : st.target.slice(1).concat(st.target[0]);
+        order.forEach(function (t) {
+          var btns = root.querySelectorAll('.build-bank .tile');
+          for (var i = 0; i < btns.length; i++) {
+            if (!btns[i].classList.contains('used') && btns[i].textContent === t) { btns[i].click(); break; }
+          }
+        });
+        go(); go();
+        break;
+      }
+      case 'type': {
+        var inp = root.querySelector('.type-in');
+        inp.value = right ? st.answers[0] : 'zzz';
+        inp.dispatchEvent(new Event('input'));
+        go(); go();
+        break;
+      }
+      case 'match':
+        st.pairs.forEach(function (pr, i) {
+          root.querySelector('.mt[data-side="a"][data-i="' + i + '"]').click();
+          root.querySelector('.mt[data-side="b"][data-i="' + i + '"]').click();
+        });
+        go();
+        break;
+      default: go();
+    }
+  }
+
+  section('播放器：全部答对能走完每一课', function () {
+    fresh();
+    LX.courseOrder.forEach(function (cid) {
+      document.body.dataset.course = cid;
+      LX.courses[cid].lessons.forEach(function (l) {
+        var finished = null, guard = 0;
+        var p = new LX.Player(box, { cid: cid, steps: LX.buildLesson(cid, l), onFinish: function (r) { finished = r; } });
+        p.start(0);
+        while (!finished && guard++ < 600) answerCurrent(p, true);
+        ok(finished, l.id + '：没有走完');
+        if (finished) {
+          eq(finished.correct, finished.graded, l.id + ' 全对时的得分');
+          ok(finished.graded >= 8, l.id + '：计分题只有 ' + finished.graded + ' 道');
+        }
+      });
+    });
+  });
+
+  section('播放器：答错的题最后再出一次', function () {
+    fresh();
+    document.body.dataset.course = 'bo';
+    var l = LX.getLesson('bo', 'b1-3'), finished = null, guard = 0;
+    var p = new LX.Player(box, { cid: 'bo', steps: LX.buildLesson('bo', l), onFinish: function (r) { finished = r; } });
+    p.start(0);
+    var n0 = p.steps.length;
+    while (p.cur.kind !== 'build' && guard++ < 100) answerCurrent(p, true);
+    eq(p.cur.kind, 'build', '找到一道排序题');
+    answerCurrent(p, false);
+    while (p.cur.kind !== 'mc' && guard++ < 200) answerCurrent(p, true);
+    answerCurrent(p, false);
+    eq(p.steps.length, n0 + 2, '答错两题后队列多两步');
+    while (!finished && guard++ < 600) answerCurrent(p, true);
+    ok(finished, '没有走完');
+    if (finished) eq(finished.graded - finished.correct, 2, '错两题');
+  });
+
+  /* ---------- 复习 ---------- */
+  section('间隔复习算法', function () {
+    fresh();
+    var t0 = new Date(2026, 0, 10, 15, 0).getTime(), k = 'test:x';
+    var expect = ['2026-01-11', '2026-01-12', '2026-01-14', '2026-01-17', '2026-01-24', '2026-02-09', '2026-03-11'];
+    expect.forEach(function (day, i) {
+      var r = LX.srs.grade(k, true, t0);
+      eq(r.box, Math.min(6, i + 1), '第 ' + (i + 1) + ' 次答对后的盒子');
+      eq(U.dayKey(r.due), day, '第 ' + (i + 1) + ' 次答对后的到期日');
+    });
+    var r = LX.srs.grade(k, false, t0);
+    eq(r.box, 1, '答错回到盒子 1');
+    eq(r.due, t0 + 10 * 60 * 1000, '答错 10 分钟后再复习');
+    LX.srs.learn('test:y');
+    eq(LX.srs.get('test:y').box, 1, '新词进盒子 1');
+    eq(U.dayKey(LX.srs.get('test:y').due), U.dayKey(U.addDays(Date.now(), 1)), '新词明天复习');
+    eq(LX.srs.get('test:y').due, U.startOfDay(LX.srs.get('test:y').due), '到期时间是当天零点');
+  });
+
+  section('复习队列与复习模式', function () {
+    LX.courseOrder.forEach(function (cid) {
+      fresh();
+      document.body.dataset.course = cid;
+      var items = LX.allItems(cid);
+      items.forEach(function (x, i) { LX.srs.learn(x.key); var r = LX.srs.get(x.key); r.box = 1 + (i % 6); r.due = 0; });
+      var due = LX.srs.dueItems(cid);
+      eq(due.length, items.length, cid + ' 到期条目数');
+      var steps = LX.buildReview(cid, due);
+      eq(steps.length, due.length, cid + ' 复习题数');
+      steps.forEach(function (s, i) { validateStep(cid, cid + '复习', s, i); });
+      var finished = null, guard = 0;
+      var p = new LX.Player(box, { cid: cid, steps: steps, mode: 'review', onFinish: function (r) { finished = r; } });
+      p.start(0);
+      while (!finished && guard++ < 3000) answerCurrent(p, true);
+      ok(finished, cid + ' 复习没有走完');
+      var wrongBox = items.filter(function (x, i) { return LX.srs.get(x.key).box !== Math.min(6, 2 + (i % 6)); });
+      eq(wrongBox.length, 0, cid + ' 全对后每个词升一格');
+      eq(LX.srs.counts(cid).due, 0, cid + ' 复习后不再到期');
+    });
+  });
+
+  section('连续学习天数', function () {
+    fresh();
+    var d = LX.store.data.days;
+    d[U.dayKey(U.addDays(Date.now(), -1))] = { xp: 5 };
+    d[U.dayKey(U.addDays(Date.now(), -2))] = { xp: 3 };
+    d[U.dayKey(U.addDays(Date.now(), -4))] = { xp: 3 };
+    eq(LX.store.streak(), 2, '今天还没学，从昨天往前数');
+    d[U.today()] = { xp: 1 };
+    eq(LX.store.streak(), 3, '今天学了');
+  });
+
+  /* ---------- 页面 ---------- */
+  section('每个页面都能打开', function () {
+    fresh();
+    LX.srs.learn('yi:ꉢ');
+    var app = document.getElementById('app');
+    var routes = {
+      '#/': '彝藏语学堂', '#/course/yi': '入门会话', '#/course/bo': '文字与发音', '#/lesson/yi/y1-1': '路上相遇',
+      '#/text/bo/b1-3': 'ཁྱེད་རང', '#/text/yi/y1-5': 'ꄓꎸ', '#/script/yi': '音节表', '#/script/yi?tone=p': 'ꋍ', '#/script/bo': '叠字',
+      '#/words/yi': 'ꉢ', '#/words/bo': 'བཀྲ་ཤིས', '#/method': '间隔复习', '#/settings': '进度备份', '#/review/bo': '没有要复习',
+      '#/play/yi/y0-1': 'p-bar', '#/play/bo/b1-2?step=3': '3 / ', '#/nowhere': '找不到'
+    };
+    Object.keys(routes).forEach(function (h) {
+      location.hash = h;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      ok(app.innerHTML.indexOf(routes[h]) >= 0, h + ' 页面里应该有「' + routes[h] + '」');
+    });
+    location.hash = '#/';
+  });
+
+  section('脚本没有报错', function () {
+    eq(window.__errors.length, 0, window.__errors.join('\n'));
+  });
+
+  var total = lines.filter(function (x) { return /^[✓✗]/.test(x); }).length;
+  var failed = lines.filter(function (x) { return /^✗/.test(x); }).length;
+  document.getElementById('summary').textContent = (fails ? '✗ 失败 ' : '✓ 全部通过 ') + '（' + (total - failed) + ' / ' + total + ' 组，' + checks + ' 项检查' + (fails ? '，' + fails + ' 项失败' : '') + '）';
+  document.getElementById('out').textContent = lines.join('\n');
+  document.title = fails ? 'FAIL ' + fails : 'PASS ' + checks;
+})();
+</script>
+</body>
+</html>

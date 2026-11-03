@@ -1,0 +1,12 @@
+# 系统和编辑器文件
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# 导出的学习进度（只在本机备份，不要提交）
+*progress*.json
+
+# 原始录音素材（压缩好的录音放在 audio/ 里提交）
+audio-raw/
