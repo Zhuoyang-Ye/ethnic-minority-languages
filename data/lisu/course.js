@@ -3,8 +3,8 @@
 LX.addCourse({
   id: 'lisu',
   name: '傈僳语',
-  endonym: 'ꓡꓲ-ꓢꓴ ꓗꓪꓸ-ꓟꓶꓻ',
-  variety: '怒江方言 · 老傈僳文（富能仁字母 Fraser Script）',
+  endonym: 'ꓡꓲ-ꓢꓴ',
+  variety: '怒江方言 · 老傈僳文（富能仁字母）',
   romanName: '拉丁转写',
   summary: '傈僳语属于汉藏语系藏缅语族彝语支，与凉山彝语是亲属语言，语序同样是「主—宾—动」（SOV）。老傈僳文（Fraser Script，Unicode U+A4D0–U+A4FF）由正写和旋转的大写拉丁字母组成，包含 30 个辅音、10 个元音和 6 个标点式声调符号，拼写与读音严格一一对应。',
   stages: [

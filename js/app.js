@@ -22,9 +22,9 @@
       LX.courseOrder.map(function (cid) { return ['#/course/' + cid, LX.courses[cid].name]; }),
       [['#/method', '学习方法'], ['#/settings', '设置']]
     );
-    return '<header class="top"><a class="brand" href="#/"><span class="yi">ꆈ</span><span class="bo">བོད</span> 彝藏语学堂</a><nav>' +
+    return '<header class="top"><div class="top-inner"><a class="brand" href="#/"><span class="brand-mark"><span class="yi">ꆈ</span><span class="bo">བོད</span></span><span>彝藏语学堂</span></a><nav>' +
       links.map(function (l) { return '<a href="' + l[0] + '"' + (l[0] === active ? ' class="on"' : '') + '>' + l[1] + '</a>'; }).join('') +
-      '</nav></header>';
+      '</nav></div></header>';
   }
 
   function page(active, body, course) {
@@ -116,7 +116,7 @@
       (d.scene ? '<p class="scene">' + esc(d.scene) + '</p>' : '') +
       d.lines.map(function (l) {
         var name = people[l.who];
-        return '<div class="dl-line"><div class="who">' + esc(l.who) + (name ? ' <span class="' + sc(cid) + '">' + esc(name) + '</span>' : '') + '</div>' +
+        return '<div class="dl-line"><div class="who"><span>' + esc(l.who) + '</span>' + (name ? '<span class="who-native ' + sc(cid) + '">' + esc(name) + '</span>' : '') + '</div>' +
           '<div class="dl-body"><div class="dl-s">' + LX.lineHTML(cid, l) + '</div>' +
           (s.roman ? '<div class="rom">' + esc(LX.lineRoman(cid, l)) + '</div>' : '') +
           '<div class="dl-ilin">' + LX.interlinearHTML(cid, l) + '</div>' +
@@ -128,32 +128,42 @@
   /* ---------- 首页 ---------- */
   function home() {
     var st = LX.store, day = st.day(), goal = st.data.settings.goal, streak = st.streak();
-    var cards = LX.courseOrder.map(function (cid) {
+    var cards = LX.courseOrder.map(function (cid, idx) {
       var c = LX.courses[cid];
       var done = c.lessons.filter(function (l) { return st.lesson(cid, l.id); }).length;
       var cnt = LX.srs.counts(cid);
       var next = nextUndone(cid);
-      return '<div class="course-card" data-course="' + cid + '">' +
-        '<div class="cc-head"><span class="' + sc(cid) + ' endonym">' + esc(c.endonym) + '</span><div><h2>' + esc(c.name) + '</h2><small>' + esc(c.variety) + '</small></div></div>' +
+      var spanClass = idx < 2 ? 'course-major' : 'course-compact';
+      var stageBadges = c.stages.map(function (s) {
+        return '<span class="stg-pill"><b>' + esc(s.level) + '</b> ' + esc(s.title) + ' (' + s.lessons.length + ')</span>';
+      }).join('');
+      return '<div class="course-card ' + spanClass + '" data-course="' + cid + '">' +
+        '<div class="cc-top">' +
+        '<div class="cc-head"><div class="cc-title"><h2>' + esc(c.name) + '</h2><small class="cc-var">' + esc(c.variety) + '</small></div>' +
+        '<span class="' + sc(cid) + ' endonym">' + esc(c.endonym) + '</span></div>' +
+        '<div class="stg-pills">' + stageBadges + '</div>' +
         '<div class="progress"><i style="width:' + Math.round(done / c.lessons.length * 100) + '%"></i></div>' +
-        '<p class="muted">已完成 ' + done + ' / ' + c.lessons.length + ' 课 · 已学 ' + cnt.learned + ' 个词' + (cnt.strong ? '，其中 ' + cnt.strong + ' 个已牢固' : '') + '</p>' +
+        '<p class="cc-meta muted">已完成 <b>' + done + '</b> / ' + c.lessons.length + ' 课 · 已学 <b>' + cnt.learned + '</b> 词' + (cnt.strong ? '（' + cnt.strong + ' 牢固）' : '') + '</p>' +
+        '</div>' +
+        '<div class="cc-bottom">' +
         '<div class="cc-actions">' +
-        (next ? '<a class="btn primary" href="' + lessonHref(cid, next) + '">' + (done ? '继续：' : '开始：') + esc(next.title) + '</a>' : '<span class="muted">已学完本门全部 ' + c.lessons.length + ' 课！可随时复习或重练</span>') +
+        (next ? '<a class="btn primary" href="' + lessonHref(cid, next) + '">' + (done ? '继续：' : '开始：') + esc(next.title) + '</a>' : '<span class="muted">已学完本门全部 ' + c.lessons.length + ' 课！</span>') +
         '<a class="btn' + (cnt.due ? ' due' : '') + '" href="#/review/' + cid + '">复习' + (cnt.due ? '（' + cnt.due + '）' : '') + '</a></div>' +
         '<div class="cc-links"><a href="#/course/' + cid + '">课程地图</a><a href="#/script/' + cid + '">文字表</a><a href="#/words/' + cid + '">词表</a></div>' +
-        '</div>';
+        '</div></div>';
     }).join('');
-    page('#/', '<section class="hero"><h1>彝藏语学堂</h1>' +
-      '<p>多民族语言互动学习站（彝语、藏语、傈僳语、维吾尔语、蒙古语）：短课、对话、讲解、主动回忆练习、间隔复习。</p>' +
-      '<div class="stats"><span>🔥 连续学习 <b>' + streak + '</b> 天</span>' +
-      '<span>今天 <b>' + day.xp + '</b> / ' + goal + ' 分</span>' +
-      '<span class="goalbar"><i style="width:' + Math.min(100, Math.round(day.xp / goal * 100)) + '%"></i></span></div></section>' +
+    page('#/', '<section class="hero card"><div class="hero-copy"><h1>彝藏语学堂</h1>' +
+      '<p>多民族语言互动学习站（彝语、藏语、傈僳语、维吾尔语、蒙古语）：短课、真实会话、中文语法与文化讲解、主动回忆练习、莱特纳间隔复习。</p></div>' +
+      '<div class="stats-box"><div class="stat-item"><span class="stat-label">连续学习</span><strong class="stat-val">🔥 ' + streak + ' 天</strong></div>' +
+      '<div class="stat-item"><span class="stat-label">今日得分</span><strong class="stat-val">' + day.xp + ' <small>/ ' + goal + ' 分</small></strong>' +
+      '<span class="goalbar"><i style="width:' + Math.min(100, Math.round(day.xp / goal * 100)) + '%"></i></span></div></div></section>' +
       '<section class="courses">' + cards + '</section>' +
-      '<section class="card how"><h2>每天怎么学</h2><ol>' +
-      '<li>先点「复习」，把今天到期的词过一遍（几分钟）。</li>' +
-      '<li>再学一课新课（10–15 分钟）：新词 → 讲解 → 练习 → 会话。</li>' +
-      '<li>有空时打开「课文」页朗读会话，用「跟读」录下自己的声音对比。</li></ol>' +
-      '<p><a href="#/method">完整的学习框架和路线图 →</a></p></section>');
+      '<section class="card how"><div class="how-head"><h2>每天怎么学</h2><a class="how-more" href="#/method">完整的学习框架和路线图 →</a></div>' +
+      '<div class="how-grid">' +
+      '<div class="how-step"><span class="how-num">1</span><div><b>先清到期复习（5 分钟）</b><p class="muted">点「复习」把今天到期的词卡过一遍，按 1→2→4→7→14→30 天巩固记忆。</p></div></div>' +
+      '<div class="how-step"><span class="how-num">2</span><div><b>再学一课新课（10–15 分钟）</b><p class="muted">按「新词认读 → 语法讲解 → 拼词配对 → 会话排句」循序渐进掌握真实表达。</p></div></div>' +
+      '<div class="how-step"><span class="how-num">3</span><div><b>打开课文朗读与跟读</b><p class="muted">在「课文」页切换逐词注释，用「🎙 跟读」录下自己的发音并回放对比。</p></div></div>' +
+      '</div></section>');
   }
 
   /* ---------- 课程地图 ---------- */
@@ -161,6 +171,8 @@
     var c = LX.courses[cid];
     if (!c) return notFound();
     var cnt = LX.srs.counts(cid);
+    var done = c.lessons.filter(function (l) { return LX.store.lesson(cid, l.id); }).length;
+    var next = nextUndone(cid);
     var stages = c.stages.map(function (stg) {
       var ls = stg.lessons.map(function (l, i) {
         var r = LX.store.lesson(cid, l.id);
@@ -169,15 +181,18 @@
           '<span class="lm">' + (r ? '最好 ' + Math.round(r.best * 100) + '%' : (l.minutes || 10) + ' 分钟') + '</span></a>';
       }).join('');
       var planned = (stg.planned || []).map(function (t) { return '<div class="lesson-row planned"><span class="ln">·</span><span class="lt"><b>' + esc(t) + '</b><small>规划中</small></span></div>'; }).join('');
-      return '<section class="stage"><h2><span class="lvl">' + esc(stg.level) + '</span>' + esc(stg.title) + '</h2><p class="muted">' + esc(stg.desc) + '</p>' + ls + planned + '</section>';
+      return '<section class="stage card"><div class="stage-head"><h2><span class="lvl">' + esc(stg.level) + '</span>' + esc(stg.title) + '</h2><span class="stage-cnt muted">共 ' + stg.lessons.length + ' 课</span></div><p class="muted stage-desc">' + esc(stg.desc) + '</p><div class="lesson-grid">' + ls + planned + '</div></section>';
     }).join('');
     var res = c.resources.map(function (r) {
-      return '<li>' + (r.url ? '<a href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.title) + '</a>' : esc(r.title)) + '<br><small>' + esc(r.note || '') + '</small></li>';
+      return '<li>' + (r.url ? '<a href="' + esc(r.url) + '" target="_blank" rel="noopener"><b>' + esc(r.title) + '</b></a>' : '<b>' + esc(r.title) + '</b>') + '<br><small>' + esc(r.note || '') + '</small></li>';
     }).join('');
-    page('#/course/' + cid, '<section class="course-head"><span class="' + sc(cid) + ' endonym">' + esc(c.endonym) + '</span><div><h1>' + esc(c.name) + '</h1><p class="muted">' + esc(c.variety) + '</p></div></section>' +
-      '<p>' + esc(c.summary) + '</p>' +
-      '<div class="cc-actions"><a class="btn" href="#/review/' + cid + '">复习' + (cnt.due ? '（' + cnt.due + '）' : '') + '</a><a class="btn" href="#/script/' + cid + '">文字表</a><a class="btn" href="#/words/' + cid + '">词表（' + cnt.learned + ' 已学）</a></div>' +
-      stages + '<section class="card"><h2>学习资源</h2><ul class="res">' + res + '</ul></section>', cid);
+    page('#/course/' + cid, '<section class="course-hero card"><div class="course-head"><div class="ch-main"><h1>' + esc(c.name) + '</h1><p class="muted">' + esc(c.variety) + '</p></div><span class="' + sc(cid) + ' endonym">' + esc(c.endonym) + '</span></div>' +
+      '<p class="course-sum">' + esc(c.summary) + '</p>' +
+      '<div class="course-bar-row"><div class="progress"><i style="width:' + Math.round(done / c.lessons.length * 100) + '%"></i></div><span class="muted">已完成 ' + done + ' / ' + c.lessons.length + ' 课</span></div>' +
+      '<div class="cc-actions">' +
+      (next ? '<a class="btn primary" href="' + lessonHref(cid, next) + '">' + (done ? '继续：' : '开始学习：') + esc(next.title) + '</a>' : '') +
+      '<a class="btn' + (cnt.due ? ' due' : '') + '" href="#/review/' + cid + '">复习' + (cnt.due ? '（' + cnt.due + '）' : '') + '</a><a class="btn" href="#/script/' + cid + '">文字表与转换工具</a><a class="btn" href="#/words/' + cid + '">词表（' + cnt.learned + ' 已学）</a></div></section>' +
+      stages + '<section class="card"><h2>学习资源与参考资料</h2><ul class="res">' + res + '</ul></section>', cid);
   }
 
   /* ---------- 课程开始页 ---------- */
@@ -186,16 +201,17 @@
     if (!l) return notFound();
     var r = LX.store.lesson(cid, lid);
     var words = (l.words || []).map(function (w) {
-      return '<span class="chip"><span class="' + sc(cid) + '">' + esc(w.s) + '</span> ' + esc(w.t === 'letter' ? w.w : w.m) + '</span>';
+      return '<span class="chip"><span class="' + sc(cid) + '">' + esc(w.s) + '</span> <span class="chip-m">' + esc(w.t === 'letter' ? w.w : w.m) + '</span></span>';
     }).join('');
     page('#/course/' + cid, '<div class="card lesson-start">' +
-      '<p class="muted"><a href="#/course/' + cid + '">← ' + esc(LX.courses[cid].name) + '</a> · ' + esc(stageOf(cid, l).title) + '</p>' +
+      '<p class="muted"><a href="#/course/' + cid + '">← 返回' + esc(LX.courses[cid].name) + '课程地图</a> · ' + esc(stageOf(cid, l).level) + ' · ' + esc(stageOf(cid, l).title) + '</p>' +
       '<h1>' + esc(l.title) + '</h1><p class="goal">🎯 ' + esc(l.goal) + '</p>' +
-      '<p class="muted">约 ' + (l.minutes || 10) + ' 分钟 · ' + (l.words || []).length + ' 个' + (l.kind === 'script' ? '字/词' : '新词') + (l.dialogue ? ' · 1 段会话' : '') +
-      (r ? ' · 已学过 ' + r.count + ' 次，最好 ' + Math.round(r.best * 100) + '%' : '') + '</p>' +
+      '<div class="ls-meta"><span>⏱ 约 ' + (l.minutes || 10) + ' 分钟</span><span>📚 ' + (l.words || []).length + ' 个' + (l.kind === 'script' ? '字/词' : '新词') + '</span>' +
+      (l.dialogue ? '<span>💬 1 段情景会话</span>' : '') +
+      (r ? '<span>✅ 已学 ' + r.count + ' 次（最佳 ' + Math.round(r.best * 100) + '%）</span>' : '') + '</div>' +
       '<div class="chips">' + words + '</div>' +
       '<div class="cc-actions"><a class="btn primary big" href="#/play/' + cid + '/' + lid + '">' + (r ? '再练一遍' : '开始学习') + '</a>' +
-      '<a class="btn" href="#/text/' + cid + '/' + lid + '">看课文</a></div>' +
+      '<a class="btn big" href="#/text/' + cid + '/' + lid + '">看课文与讲解</a></div>' +
       (l.source ? '<p class="src">来源：' + (l.source.url ? '<a href="' + esc(l.source.url) + '" target="_blank" rel="noopener">' + esc(l.source.title) + '</a>' : esc(l.source.title)) + '</p>' : '') +
       '</div>', cid);
   }
@@ -246,12 +262,12 @@
       return '<div class="card tip tip-' + (t.kind || 'grammar') + '"><div class="tip-kind">' + ({ pron: '发音', grammar: '语法', culture: '文化' }[t.kind] || '提示') + '</div><h3>' + esc(t.title) + '</h3><div class="tip-body">' + (typeof t.html === 'function' ? t.html() : t.html) + '</div></div>';
     }).join('');
     var next = LX.nextLesson(cid, lid);
-    page('#/course/' + cid, '<p class="muted"><a href="#/course/' + cid + '">← ' + esc(LX.courses[cid].name) + '</a></p>' +
+    page('#/course/' + cid, '<div class="card text-head"><p class="muted"><a href="#/course/' + cid + '">← ' + esc(LX.courses[cid].name) + '</a> · ' + esc(stageOf(cid, l).title) + '</p>' +
       '<h1>' + esc(l.title) + '</h1><p class="goal">🎯 ' + esc(l.goal) + '</p>' +
-      (l.dialogue ? '<section class="card"><h2>会话</h2>' + LX.dialogueHTML(cid, l.dialogue) + '</section>' : '') +
-      '<section class="card"><h2>' + (l.kind === 'script' ? '字和词' : '生词') + '</h2>' + words + '</section>' +
-      (tips ? '<section><h2>讲解</h2>' + tips + '</section>' : '') +
-      '<div class="cc-actions"><a class="btn primary" href="#/play/' + cid + '/' + lid + '">做练习</a>' + (next ? '<a class="btn" href="' + lessonHref(cid, next) + '">下一课：' + esc(next.title) + '</a>' : '') + '</div>' +
+      '<div class="cc-actions"><a class="btn primary" href="#/play/' + cid + '/' + lid + '">进入互动练习</a>' + (next ? '<a class="btn" href="' + lessonHref(cid, next) + '">下一课：' + esc(next.title) + '</a>' : '') + '</div></div>' +
+      (l.dialogue ? '<section class="card"><h2>会话原文</h2>' + LX.dialogueHTML(cid, l.dialogue) + '</section>' : '') +
+      '<section class="card"><h2>' + (l.kind === 'script' ? '字和词' : '本课生词') + '</h2>' + words + '</section>' +
+      (tips ? '<section class="tips-sec"><h2>发音、语法与文化讲解</h2><div class="tips-grid">' + tips + '</div></section>' : '') +
       (l.source ? '<p class="src">来源：' + (l.source.url ? '<a href="' + esc(l.source.url) + '" target="_blank" rel="noopener">' + esc(l.source.title) + '</a>' : esc(l.source.title)) + '</p>' : ''), cid);
   }
 
@@ -312,13 +328,13 @@
         }).join('') + '</tr>';
       });
     });
-    page('#/course/yi', '<h1>彝文音节表</h1>' +
+    page('#/course/yi', '<div class="card"><h1>彝文音节表</h1>' +
       '<p>规范彝文有 819 个基本字，Unicode 收录 1165 个（含 x 调字和重复号 <span class="yi">ꀕ</span>）。选一个声调，点任意一个字看读音。</p>' +
-      '<section class="card">' + LX.tpl.yiToneTable() + '</section>' +
-      '<div class="tabs">' + tabs + '</div><div class="syl-info card" hidden></div>' +
-      '<div class="table-scroll"><table class="syltable">' + head + rows + '</table></div>' +
+      LX.tpl.yiToneTable() + '</div>' +
       '<section class="card tool"><h2>彝文 ⇄ 拼音转换</h2><p class="muted">贴入彝文得到拼音；输入拼音（音节之间空格，例如 <code>nga op rro bbo</code>）得到彝文。</p>' +
-      '<textarea class="conv-in" rows="3" placeholder="ꉢ ꀒꎂ ꁧ 或 nga op rro bbo"></textarea><div class="conv-out yi"></div></section>', 'yi');
+      '<textarea class="conv-in" rows="3" placeholder="ꉢ ꀒꎂ ꁧ 或 nga op rro bbo"></textarea><div class="conv-out yi"></div></section>' +
+      '<section class="card"><h2>音节检索表</h2><div class="tabs">' + tabs + '</div><div class="syl-info card" hidden></div>' +
+      '<div class="table-scroll"><table class="syltable">' + head + rows + '</table></div></section>', 'yi');
     var info = app.querySelector('.syl-info');
     app.querySelectorAll('.syl').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -341,27 +357,26 @@
 
   function boScript() {
     var A = LX.BO_ALPHA;
-    page('#/course/bo', '<h1>藏文字母表</h1>' +
+    page('#/course/bo', '<div class="card"><h1>藏文字母表</h1><p class="muted">包含 30 个辅音字母（按高低声调着色）、4 个元音符号、前后加字与上下加字叠字表。</p></div>' +
+      '<section class="card tool"><h2>藏文 → 威利转写</h2><p class="muted">贴入藏文，自动转成威利转写（Wylie / EWTS 的常用部分），可以用来核对拼写。</p>' +
+      '<textarea class="conv-in bo" rows="3" placeholder="བཀྲ་ཤིས་བདེ་ལེགས།"></textarea><div class="conv-out"></div></section>' +
       '<section class="card"><h2>30 个辅音字母</h2>' + LX.tpl.boConsonantTable(0, 30) + '</section>' +
       '<section class="card"><h2>4 个元音符号</h2>' + LX.tpl.boVowelTable() + '</section>' +
       '<section class="card"><h2>前加字与后加字</h2><p>前加字（5 个）：<span class="bo big">' + A.prefixes.join(' ') + '</span>，写在基字前面，不发音。</p>' +
       '<p>第二后加字：<span class="bo big">' + A.postsuffixes.join(' ') + '</span>（现代只用 ས，不发音）。</p>' + LX.tpl.boSuffixTable() + '</section>' +
-      '<section class="card"><h2>叠字</h2>' + LX.tpl.boStackTable() + '</section>' +
-      '<section class="card tool"><h2>藏文 → 威利转写</h2><p class="muted">贴入藏文，自动转成威利转写（Wylie / EWTS 的常用部分），可以用来核对拼写。</p>' +
-      '<textarea class="conv-in bo" rows="3" placeholder="བཀྲ་ཤིས་བདེ་ལེགས།"></textarea><div class="conv-out"></div></section>', 'bo');
+      '<section class="card"><h2>叠字</h2>' + LX.tpl.boStackTable() + '</section>', 'bo');
     var inp = app.querySelector('.conv-in'), out = app.querySelector('.conv-out');
     inp.addEventListener('input', function () { out.textContent = LX.boWylie(inp.value); });
   }
 
   function lisuScript() {
-    var A = LX.LISU_ALPHA;
-    page('#/course/lisu', '<h1>老傈僳文（富能仁字母）字母表</h1>' +
-      '<p>老傈僳文（Fraser Script，Unicode <code>U+A4D0–U+A4FF</code>）由正写与倒转的大写拉丁字母组成，包含 30 个辅音字母、10 个元音字母和 6 个标点式声调符号。</p>' +
+    page('#/course/lisu', '<div class="card"><h1>老傈僳文（富能仁字母）字母表</h1>' +
+      '<p>老傈僳文（Fraser Script，Unicode <code>U+A4D0–U+A4FF</code>）由正写与倒转的大写拉丁字母组成，包含 30 个辅音字母、10 个元音字母和 6 个标点式声调符号。</p></div>' +
+      '<section class="card tool"><h2>老傈僳文 ⇄ 拼音转换</h2><p class="muted">贴入老傈僳文得到拉丁转写；输入拼音（如 <code>li-su</code> 或 <code>at-pa</code>）得到老傈僳文。</p>' +
+      '<textarea class="conv-in lisu" rows="3" placeholder="ꓡꓲ-ꓢꓴ 或 li-su"></textarea><div class="conv-out"></div></section>' +
       '<section class="card"><h2>30 个辅音字母</h2>' + LX.tpl.lisuConsonantTable(0, 30) + '</section>' +
       '<section class="card"><h2>10 个元音字母</h2>' + LX.tpl.lisuVowelTable() + '</section>' +
-      '<section class="card"><h2>6 个声调符号</h2>' + LX.tpl.lisuToneTable() + '</section>' +
-      '<section class="card tool"><h2>老傈僳文 ⇄ 拼音转换</h2><p class="muted">贴入老傈僳文得到拉丁转写；输入拼音（如 <code>li-su</code> 或 <code>a-pa</code>）得到老傈僳文。</p>' +
-      '<textarea class="conv-in lisu" rows="3" placeholder="ꓡꓲꓢꓴ 或 li-su"></textarea><div class="conv-out"></div></section>', 'lisu');
+      '<section class="card"><h2>6 个声调符号</h2>' + LX.tpl.lisuToneTable() + '</section>', 'lisu');
     var inp = app.querySelector('.conv-in'), out = app.querySelector('.conv-out');
     inp.addEventListener('input', function () {
       var v = inp.value;
@@ -371,12 +386,12 @@
   }
 
   function ugScript() {
-    page('#/course/ug', '<h1>维吾尔文字母表（老维文 ⇄ 拉丁维文 ULY）</h1>' +
-      '<p>现代维吾尔文字母表共 32 个字母（8 个元音、24 个辅音），从右往左书写。与阿拉伯文不同，维吾尔文把所有元音都完整写出来，词首元音前固定加静音隔音符 <span class="ug">ئ</span>（hemze）。</p>' +
-      '<section class="card"><h2>8 个元音字母（和谐分组）</h2>' + LX.tpl.ugVowelTable() + '</section>' +
-      '<section class="card"><h2>24 个辅音字母</h2>' + LX.tpl.ugConsonantTable(0, 24) + '</section>' +
+    page('#/course/ug', '<div class="card"><h1>维吾尔文字母表（老维文 ⇄ 拉丁维文 ULY）</h1>' +
+      '<p>现代维吾尔文字母表共 32 个字母（8 个元音、24 个辅音），从右往左书写。与阿拉伯文不同，维吾尔文把所有元音都完整写出来，词首元音前固定加静音隔音符 <span class="ug">ئ</span>（hemze）。</p></div>' +
       '<section class="card tool"><h2>维吾尔文 ⇄ 拉丁维文（ULY）转换</h2><p class="muted">贴入维吾尔文自动转成拉丁维文（ULY）；输入拉丁维文（如 <code>yaxshimusiz</code>）转成维吾尔文。</p>' +
-      '<textarea class="conv-in ug" rows="3" placeholder="ياخشىمۇسىز 或 yaxshimusiz"></textarea><div class="conv-out"></div></section>', 'ug');
+      '<textarea class="conv-in ug" rows="3" placeholder="ياخشىمۇسىز 或 yaxshimusiz"></textarea><div class="conv-out"></div></section>' +
+      '<section class="card"><h2>8 个元音字母（和谐分组）</h2>' + LX.tpl.ugVowelTable() + '</section>' +
+      '<section class="card"><h2>24 个辅音字母</h2>' + LX.tpl.ugConsonantTable(0, 24) + '</section>', 'ug');
     var inp = app.querySelector('.conv-in'), out = app.querySelector('.conv-out');
     inp.addEventListener('input', function () {
       var v = inp.value;
@@ -386,13 +401,13 @@
   }
 
   function mnScript() {
-    page('#/course/mn', '<h1>传统蒙文字母表（胡都木蒙文）</h1>' +
-      '<p>传统蒙古文（Hudum Mongolian，Unicode <code>U+1800–U+18AF</code>）包含 7 个基本元音和 20 多个辅音字母，严格遵循元音和谐律（阳性、阴性、中性元音）与格助词黏着规则。</p>' +
+    page('#/course/mn', '<div class="card"><h1>传统蒙文字母表（胡都木蒙文）</h1>' +
+      '<p>传统蒙古文（Hudum Mongolian，Unicode <code>U+1800–U+18AF</code>）包含 7 个基本元音和 20 多个辅音字母，严格遵循元音和谐律（阳性、阴性、中性元音）与格助词黏着规则。</p></div>' +
+      '<section class="card tool"><h2>传统蒙文 ⇄ 拉丁转写转换</h2><p class="muted">贴入传统蒙文转成拉丁转写；输入拉丁转写（如 <code>sayin bayin-a</code>）转成传统蒙文。</p>' +
+      '<textarea class="conv-in mn" rows="3" placeholder="ᠰᠠᠶᠢᠨ ᠪᠠᠶᠢᠨ᠎ᠠ 或 sayin bayin-a"></textarea><div class="conv-out"></div></section>' +
       '<section class="card"><h2>7 个元音字母与元音和谐</h2>' + LX.tpl.mnVowelTable() + '</section>' +
       '<section class="card"><h2>常用辅音字母</h2>' + LX.tpl.mnConsonantTable(0, 20) + '</section>' +
-      '<section class="card"><h2>常用格助词与后缀</h2>' + LX.tpl.mnCaseTable() + '</section>' +
-      '<section class="card tool"><h2>传统蒙文 ⇄ 拉丁转写转换</h2><p class="muted">贴入传统蒙文转成拉丁转写；输入拉丁转写（如 <code>sayin bayina</code>）转成传统蒙文。</p>' +
-      '<textarea class="conv-in mn" rows="3" placeholder="ᠰᠠᠶᠢᠨ ᠪᠠᠶᠢᠨ᠎ᠠ 或 sayin bayina"></textarea><div class="conv-out"></div></section>', 'mn');
+      '<section class="card"><h2>常用格助词与后缀</h2>' + LX.tpl.mnCaseTable() + '</section>', 'mn');
     var inp = app.querySelector('.conv-in'), out = app.querySelector('.conv-out');
     inp.addEventListener('input', function () {
       var v = inp.value;
@@ -415,11 +430,11 @@
         '<td class="' + sc(cid) + '">' + esc(w.s) + '</td><td class="rom-inline">' + esc(r) + '</td><td>' + esc(w.m) + '</td>' +
         '<td><a href="#/text/' + cid + '/' + x.lesson.id + '">' + esc(x.lesson.title) + '</a></td><td>' + boxDots(x.key) + '</td></tr>';
     }).join('');
-    page('#/course/' + cid, '<h1>' + esc(c.name) + '词表</h1>' +
+    page('#/course/' + cid, '<div class="card"><h1>' + esc(c.name) + '词表</h1>' +
       '<div class="filters"><input class="w-search" type="search" placeholder="搜索文字、注音或意思">' +
       '<select class="w-filter"><option value="all">全部（' + all.length + '）</option><option value="learned">已学</option><option value="due">到期待复习</option><option value="new">未学</option></select></div>' +
       '<div class="table-scroll"><table class="wordtable full"><tr><th>文字</th><th>' + esc(c.romanName) + '</th><th>意思</th><th>课</th><th>复习</th></tr>' + rows + '</table></div>' +
-      '<p class="muted">复习盒子 1–6：答对一次升一格，间隔依次是 1、2、4、7、14、30 天；答错回到第 1 格。</p>', cid);
+      '<p class="muted">复习盒子 1–6：答对一次升一格，间隔依次是 1、2、4、7、14、30 天；答错回到第 1 格。</p></div>', cid);
     var s = app.querySelector('.w-search'), f = app.querySelector('.w-filter');
     function apply() {
       var t = s.value.trim().toLowerCase(), v = f.value;
@@ -437,42 +452,39 @@
   function method() {
     var stageList = LX.courseOrder.map(function (cid) {
       var c = LX.courses[cid];
-      return '<h3>' + esc(c.name) + '（' + esc(c.variety) + '）</h3><ol>' + c.stages.map(function (s) {
+      return '<div class="roadmap-item"><h3>' + esc(c.name) + ' <small class="muted">（' + esc(c.variety) + '）</small></h3><ol>' + c.stages.map(function (s) {
         return '<li><b>' + esc(s.level) + ' · ' + esc(s.title) + '</b>：' + esc(s.desc) +
-          (s.lessons.length ? '（已有 ' + s.lessons.length + ' 课）' : '（规划中）') + '</li>';
-      }).join('') + '</ol>';
+          (s.lessons.length ? '（共 ' + s.lessons.length + ' 课）' : '（规划中）') + '</li>';
+      }).join('') + '</ol></div>';
     }).join('');
-    page('#/method', '<h1>学习方法</h1>' +
-      '<section class="card"><h2>Babbel 式学习的六个要点，以及本站怎么做</h2><ol class="method">' +
+    page('#/method', '<div class="card"><h1>学习方法与课程路线图</h1>' +
+      '<p class="muted">借鉴 Babbel 的对话式微课设计与莱特纳间隔复习法，帮助你在每天 15 分钟内扎实掌握多民族语言的文字、发音与日常交流。</p></div>' +
+      '<section class="card"><h2>Babbel 式学习的六个要点</h2><ol class="method">' +
       '<li><b>短课。</b>每课 10–15 分钟，只学 8–12 个新词或字母，学完就能用上。</li>' +
       '<li><b>从对话出发。</b>会话课围绕一个真实场景（路上相遇、做客、买东西），新词都出现在对话里。</li>' +
       '<li><b>用母语讲解。</b>发音、语法、文化点用中文讲，穿插在练习中间：讲完马上练。</li>' +
       '<li><b>主动回忆，逐步加难。</b>先看新词，马上认读（选意思），再反过来产出（选文字）、配对、拼词、写拼音，最后在句子里补词、排句子。</li>' +
       '<li><b>错了再来。</b>答错的题会在本课最后再出一次，课程结束时列出需要多练的词。</li>' +
       '<li><b>间隔复习。</b>学过的词进入复习盒子，答对后间隔 1、2、4、7、14、30 天再出现，答错回到第一格。每天先复习、再学新课。</li></ol></section>' +
-      '<section class="card"><h2>课程路线图</h2>' + stageList + '</section>' +
-      '<section class="card"><h2>建议的节奏</h2><ul>' +
+      '<section class="card"><h2>五门语言课程路线图</h2><div class="roadmap-grid">' + stageList + '</div></section>' +
+      '<section class="card"><h2>建议的节奏与来源说明</h2><ul>' +
       '<li><b>每天 15–20 分钟：</b>先清空到期复习，再学一课。宁可每天少一点，也不要一周突击一次。</li>' +
       '<li><b>多语言学习：</b>先把一门的「文字与发音」阶段学完再开始另一门；进入会话阶段后可以隔天交替。</li>' +
       '<li><b>朗读和跟读：</b>每课学完打开「课文」页，大声朗读会话，用「跟读」按钮录音对比。</li>' +
-      '<li><b>找母语者：</b>本站暂时没有真人录音。有条件的话，请会说的朋友帮忙读课文并录音，放进 audio 文件夹（做法见仓库里的 docs/content-guide.md）。</li></ul></section>' +
-      '<section class="card"><h2>内容来源与准确性</h2><ul>' +
-      '<li>彝语会话取自 BabelStone 的《600 Phrases in the Liangshan Yi Dialect》（《凉山彝语会话六百句》英译本）及凉山日常会话与传统谚语材料，彝文拼音由 Unicode 字符名自动生成。</li>' +
-      '<li>藏语、傈僳语、维吾尔语、蒙古语会话为根据标准教材与词典编写的常用句，并用自动转写程序核对拼写；实际发音请以母语者和有声教材为准。</li>' +
-      '<li>完整的来源列表见仓库里的 docs/sources.md。</li></ul></section>');
+      '<li><b>内容来源：</b>彝语会话取自 BabelStone《600 Phrases in the Liangshan Yi Dialect》（《凉山彝语会话六百句》英译本）及凉山传统谚语；藏语、傈僳语、维吾尔语、蒙古语会话根据标准教材与词典编写，并用自动转写程序逐词核对拼写。</li></ul></section>');
   }
 
   /* ---------- 设置 ---------- */
   function settings() {
     var s = LX.store.data.settings;
-    page('#/settings', '<h1>设置</h1><section class="card form">' +
+    page('#/settings', '<div class="card"><h1>设置与进度管理</h1><section class="form">' +
       '<label><input type="checkbox" name="roman"' + (s.roman ? ' checked' : '') + '> 在题目和会话里显示拼音 / 注音</label>' +
       '<label>藏文与蒙文的拉丁字母写法 <select name="boRoman"><option value="p">简易注音（口语读音）</option><option value="w">书面转写（威利 / 拉丁转写）</option><option value="both">两种都显示</option></select></label>' +
       '<label>每日目标 <select name="goal"><option value="15">15 分</option><option value="30">30 分</option><option value="50">50 分</option><option value="80">80 分</option></select></label>' +
       '<label>外观 <select name="theme"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>' +
       '<label><input type="checkbox" name="big"' + (s.big ? ' checked' : '') + '> 大字号</label>' +
-      '</section><section class="card"><h2>进度备份</h2><p class="muted">进度只存在这台设备的浏览器里。换设备或清理浏览器数据前，先导出备份。</p>' +
-      '<div class="cc-actions"><button class="btn" data-act="export">导出进度</button><label class="btn">导入进度<input type="file" accept="application/json,.json" hidden data-act="import"></label>' +
+      '</section></div><section class="card"><h2>进度备份</h2><p class="muted">进度只存在这台设备的浏览器里。换设备或清理浏览器数据前，先导出备份。</p>' +
+      '<div class="cc-actions"><button class="btn primary" data-act="export">导出进度 (.json)</button><label class="btn">导入进度<input type="file" accept="application/json,.json" hidden data-act="import"></label>' +
       '<button class="btn danger" data-act="reset">清空所有进度</button></div><p class="msg muted"></p></section>');
     ['boRoman', 'goal', 'theme'].forEach(function (k) { app.querySelector('[name=' + k + ']').value = String(s[k]); });
     app.querySelectorAll('.form input, .form select').forEach(function (el) {
@@ -505,7 +517,7 @@
   }
 
   function notFound() {
-    page('', '<div class="card"><h1>找不到这个页面</h1><p><a href="#/">回首页</a></p></div>');
+    page('', '<div class="card done-card"><h1>找不到这个页面</h1><p><a class="btn primary" href="#/">回首页</a></p></div>');
   }
 
   /* ---------- 全局交互：查词、跟读、播放、会话开关 ---------- */
