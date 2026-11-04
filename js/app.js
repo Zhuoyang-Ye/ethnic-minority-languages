@@ -7,8 +7,7 @@
    #/review/:cid          复习到期的词；#/review/:cid/extra 加练最薄弱的词
    #/script/:cid          文字表与转换工具
    #/words/:cid           词表
-   #/method               学习方法
-   #/settings             设置 */
+   #/method               学习方法 */
 (function () {
   'use strict';
   var U = LX.util, esc = U.esc;
@@ -20,17 +19,30 @@
   function nav(active) {
     var links = [['#/', '首页']].concat(
       LX.courseOrder.map(function (cid) { return ['#/course/' + cid, LX.courses[cid].name]; }),
-      [['#/method', '学习方法'], ['#/settings', '设置']]
+      [['#/method', '学习方法']]
     );
     return '<header class="top"><div class="top-inner"><a class="brand" href="#/"><span class="brand-mark"><span class="yi">ꆈ</span><span class="bo">བོད</span></span><span>少数名族语言学堂</span></a><nav>' +
       links.map(function (l) { return '<a href="' + l[0] + '"' + (l[0] === active ? ' class="on"' : '') + '>' + l[1] + '</a>'; }).join('') +
-      '</nav></div></header>';
+      '</nav><label class="theme-control">主题<select name="theme" aria-label="选择主题">' +
+      '<option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label></div></header>';
+  }
+
+  function bindThemeControl() {
+    var theme = document.querySelector('.top .theme-control select');
+    if (!theme) return;
+    theme.value = LX.store.data.settings.theme;
+    theme.addEventListener('change', function () {
+      LX.store.data.settings.theme = theme.value;
+      LX.store.save();
+      applyTheme();
+    });
   }
 
   function page(active, body, course) {
     document.body.dataset.course = course || '';
     app.innerHTML = nav(active) + '<main class="wrap">' + body + '</main>' +
       '<footer class="foot">个人学习用 · 进度保存在本机浏览器 · <a href="#/method">学习方法与来源说明</a></footer>';
+    bindThemeControl();
     window.scrollTo(0, 0);
   }
 
@@ -179,8 +191,7 @@
       '<div class="stats-box"><div class="stat-item"><span class="stat-label">连续学习</span><strong class="stat-val">🔥 ' + streak + ' 天</strong></div>' +
       '<div class="stat-item"><span class="stat-label">今日得分</span><strong class="stat-val">' + day.xp + ' <small>/ ' + goal + ' 分</small></strong>' +
       '<span class="goalbar"><i style="width:' + Math.min(100, Math.round(day.xp / goal * 100)) + '%"></i></span></div>' +
-      '<label class="theme-control">主题<select name="theme" aria-label="选择主题">' +
-      '<option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label></div></section>' +
+      '</div></section>' +
       '<section class="courses">' + cards + '</section>' +
       '<section class="card how"><div class="how-head"><h2>每天怎么学</h2><a class="how-more" href="#/method">完整的学习框架和路线图 →</a></div>' +
       '<div class="how-grid">' +
@@ -188,13 +199,6 @@
       '<div class="how-step"><span class="how-num">2</span><div><b>再学一课新课（10–15 分钟）</b><p class="muted">按「新词认读 → 语法讲解 → 拼词配对 → 会话排句」循序渐进掌握真实表达。</p></div></div>' +
       '<div class="how-step"><span class="how-num">3</span><div><b>打开课文朗读与跟读</b><p class="muted">在「课文」页切换逐词注释，用「🎙 跟读」录下自己的发音并回放对比。</p></div></div>' +
       '</div></section>');
-    var theme = app.querySelector('.theme-control select');
-    theme.value = LX.store.data.settings.theme;
-    theme.addEventListener('change', function () {
-      LX.store.data.settings.theme = theme.value;
-      LX.store.save();
-      applyTheme();
-    });
   }
 
   /* ---------- 课程地图 ---------- */
@@ -514,12 +518,11 @@
       '<label><input type="checkbox" name="roman"' + (s.roman ? ' checked' : '') + '> 在题目和会话里显示拼音 / 注音</label>' +
       '<label>藏文与蒙文的拉丁字母写法 <select name="boRoman"><option value="p">简易注音（口语读音）</option><option value="w">书面转写（威利 / 拉丁转写）</option><option value="both">两种都显示</option></select></label>' +
       '<label>每日目标 <select name="goal"><option value="15">15 分</option><option value="30">30 分</option><option value="50">50 分</option><option value="80">80 分</option></select></label>' +
-      '<label>外观 <select name="theme"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>' +
       '<label><input type="checkbox" name="big"' + (s.big ? ' checked' : '') + '> 大字号</label>' +
       '</section></div><section class="card"><h2>进度备份</h2><p class="muted">进度只存在这台设备的浏览器里。换设备或清理浏览器数据前，先导出备份。</p>' +
       '<div class="cc-actions"><button class="btn primary" data-act="export">导出进度 (.json)</button><label class="btn">导入进度<input type="file" accept="application/json,.json" hidden data-act="import"></label>' +
       '<button class="btn danger" data-act="reset">清空所有进度</button></div><p class="msg muted"></p></section>');
-    ['boRoman', 'goal', 'theme'].forEach(function (k) { app.querySelector('[name=' + k + ']').value = String(s[k]); });
+    ['boRoman', 'goal'].forEach(function (k) { app.querySelector('[name=' + k + ']').value = String(s[k]); });
     app.querySelectorAll('.form input, .form select').forEach(function (el) {
       el.addEventListener('change', function () {
         s[el.name] = el.type === 'checkbox' ? el.checked : (el.name === 'goal' ? +el.value : el.value);
