@@ -1,4 +1,4 @@
-/* 彝藏语学堂 · 视觉与排版样式
+/* 少数名族语言学堂 · 视觉与排版样式
    1. 界面中英文与数字统一使用清晰现代的无衬线字体（PingFang SC / SF Pro / Inter），避免被民族文字的 size-adjust 干扰；
    2. 五种民族文字（.yi / .bo / .lisu / .ug / .mn）各自绑定专用 Web 字体与本地字体文件，保证字形端正清晰；
    3. 首页采用 6 栏 Bento 网格（上 2 下 3），课程地图采用双栏课时网格，练习器垂直居中，消除空白失衡。 */
@@ -168,6 +168,8 @@ small { color: var(--muted); font-size: .86rem; }
 .stat-val { font-size: 1.15rem; font-weight: 800; color: var(--fg); }
 .goalbar { width: 100%; height: 7px; background: var(--soft); border-radius: 99px; overflow: hidden; margin-top: .2rem; }
 .goalbar i { display: block; height: 100%; background: var(--accent2); border-radius: 99px; }
+.theme-control { display: flex; align-items: center; gap: .45rem; color: var(--muted); font-size: .82rem; font-weight: 700; white-space: nowrap; }
+.theme-control select { min-width: 6.3rem; padding: .3rem .5rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--card-solid); color: var(--fg); font: inherit; }
 
 .courses { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1.1rem; margin: 1.1rem 0; }
 .course-card {
