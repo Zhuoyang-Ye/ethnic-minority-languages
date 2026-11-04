@@ -22,7 +22,7 @@
       LX.courseOrder.map(function (cid) { return ['#/course/' + cid, LX.courses[cid].name]; }),
       [['#/method', '学习方法'], ['#/settings', '设置']]
     );
-    return '<header class="top"><div class="top-inner"><a class="brand" href="#/"><span class="brand-mark"><span class="yi">ꆈ</span><span class="bo">བོད</span></span><span>彝藏语学堂</span></a><nav>' +
+    return '<header class="top"><div class="top-inner"><a class="brand" href="#/"><span class="brand-mark"><span class="yi">ꆈ</span><span class="bo">བོད</span></span><span>少数名族语言学堂</span></a><nav>' +
       links.map(function (l) { return '<a href="' + l[0] + '"' + (l[0] === active ? ' class="on"' : '') + '>' + l[1] + '</a>'; }).join('') +
       '</nav></div></header>';
   }
@@ -152,11 +152,13 @@
         '<div class="cc-links"><a href="#/course/' + cid + '">课程地图</a><a href="#/script/' + cid + '">文字表</a><a href="#/words/' + cid + '">词表</a></div>' +
         '</div></div>';
     }).join('');
-    page('#/', '<section class="hero card"><div class="hero-copy"><h1>彝藏语学堂</h1>' +
+    page('#/', '<section class="hero card"><div class="hero-copy"><h1>少数名族语言学堂</h1>' +
       '<p>多民族语言互动学习站（彝语、藏语、傈僳语、维吾尔语、蒙古语）：短课、真实会话、中文语法与文化讲解、主动回忆练习、莱特纳间隔复习。</p></div>' +
       '<div class="stats-box"><div class="stat-item"><span class="stat-label">连续学习</span><strong class="stat-val">🔥 ' + streak + ' 天</strong></div>' +
       '<div class="stat-item"><span class="stat-label">今日得分</span><strong class="stat-val">' + day.xp + ' <small>/ ' + goal + ' 分</small></strong>' +
-      '<span class="goalbar"><i style="width:' + Math.min(100, Math.round(day.xp / goal * 100)) + '%"></i></span></div></div></section>' +
+      '<span class="goalbar"><i style="width:' + Math.min(100, Math.round(day.xp / goal * 100)) + '%"></i></span></div>' +
+      '<label class="theme-control">主题<select name="theme" aria-label="选择主题">' +
+      '<option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label></div></section>' +
       '<section class="courses">' + cards + '</section>' +
       '<section class="card how"><div class="how-head"><h2>每天怎么学</h2><a class="how-more" href="#/method">完整的学习框架和路线图 →</a></div>' +
       '<div class="how-grid">' +
@@ -164,6 +166,13 @@
       '<div class="how-step"><span class="how-num">2</span><div><b>再学一课新课（10–15 分钟）</b><p class="muted">按「新词认读 → 语法讲解 → 拼词配对 → 会话排句」循序渐进掌握真实表达。</p></div></div>' +
       '<div class="how-step"><span class="how-num">3</span><div><b>打开课文朗读与跟读</b><p class="muted">在「课文」页切换逐词注释，用「🎙 跟读」录下自己的发音并回放对比。</p></div></div>' +
       '</div></section>');
+    var theme = app.querySelector('.theme-control select');
+    theme.value = LX.store.data.settings.theme;
+    theme.addEventListener('change', function () {
+      LX.store.data.settings.theme = theme.value;
+      LX.store.save();
+      applyTheme();
+    });
   }
 
   /* ---------- 课程地图 ---------- */
