@@ -55,6 +55,10 @@ LX.addLessons('bo', 'b1', [
       { type: 'choice', q: '句末的 ཡིན་པས 表示什么？', options: ['疑问「……吗？」', '过去', '否定'], answer: 0 },
       { type: 'choice', q: '礼貌地回答「是的」：', options: ['ལགས་ཡིན།', 'ཡིན་པས།', 'བཀྲ་ཤིས།'], answer: 0, script: true }
     ],
+    referenceAudio: [
+      LX.SLR158.tracks['b1-1-greeting'],
+      LX.SLR158.tracks['b1-1-wellbeing']
+    ],
     source: { title: '本站编写（常用问候语）' }
   },
   {
