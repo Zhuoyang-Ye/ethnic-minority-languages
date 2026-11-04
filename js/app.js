@@ -107,6 +107,28 @@
     return (navigator.mediaDevices && window.MediaRecorder) ? '<button class="mini-btn rec" title="录下自己的发音并回放">🎙 跟读</button>' : '';
   }
 
+  function referenceAudioHTML(l) {
+    var tracks = l && l.referenceAudio;
+    if (!tracks || !tracks.length) return '';
+    var source = LX.SLR158 && LX.SLR158.source;
+    return '<section class="reference-audio card" aria-labelledby="reference-audio-title">' +
+      '<div class="reference-head"><div><h2 id="reference-audio-title">SLR158 拓展跟读：先听，再跟读</h2>' +
+      '<p class="muted">这些是拉萨话真实朗读片段，不是本课对话的逐句配音。先播放一遍，需要时用「重播」，然后点击同一条旁边的「跟读」录下自己并自动回放。</p></div>' +
+      (source ? '<span class="badge">' + esc(source.license) + '</span>' : '') + '</div>' +
+      '<div class="reference-list">' + tracks.map(function (track) {
+        return '<article class="reference-track">' +
+          '<div class="reference-copy"><strong class="' + sc('bo') + '">' + esc(track.utterance) + '</strong>' +
+          '<span class="muted">' + esc(track.meaning) + '</span><small>SLR158 语料编号：' + esc(track.corpusId) + '</small></div>' +
+          '<audio controls preload="metadata" src="' + esc(track.path) + '" aria-label="播放 ' + esc(track.meaning) + ' 的 SLR158 参考音频"></audio>' +
+          '<div class="reference-actions"><button class="mini-btn reference-replay" data-src="' + esc(track.path) + '">↻ 重播</button>' + recBtn() + '</div>' +
+          '</article>';
+      }).join('') + '</div>' +
+      (source ? '<p class="src">来源：<a href="' + esc(source.url) + '" target="_blank" rel="noopener">' + esc(source.title) + '</a> · ' +
+      '<a href="' + esc(source.licenseUrl) + '" target="_blank" rel="noopener">' + esc(source.license) + '</a> · ' +
+      esc(source.attribution) + ' · ' + esc(source.dialect) + '。' + esc(source.note) + '</p>' : '') +
+      '</section>';
+  }
+
   LX.dialogueHTML = function (cid, d) {
     var s = LX.settings();
     var people = d.people || {};
@@ -221,6 +243,7 @@
       '<div class="chips">' + words + '</div>' +
       '<div class="cc-actions"><a class="btn primary big" href="#/play/' + cid + '/' + lid + '">' + (r ? '再练一遍' : '开始学习') + '</a>' +
       '<a class="btn big" href="#/text/' + cid + '/' + lid + '">看课文与讲解</a></div>' +
+      referenceAudioHTML(l) +
       (l.source ? '<p class="src">来源：' + (l.source.url ? '<a href="' + esc(l.source.url) + '" target="_blank" rel="noopener">' + esc(l.source.title) + '</a>' : esc(l.source.title)) + '</p>' : '') +
       '</div>', cid);
   }
@@ -275,6 +298,7 @@
       '<h1>' + esc(l.title) + '</h1><p class="goal">🎯 ' + esc(l.goal) + '</p>' +
       '<div class="cc-actions"><a class="btn primary" href="#/play/' + cid + '/' + lid + '">进入互动练习</a>' + (next ? '<a class="btn" href="' + lessonHref(cid, next) + '">下一课：' + esc(next.title) + '</a>' : '') + '</div></div>' +
       (l.dialogue ? '<section class="card"><h2>会话原文</h2>' + LX.dialogueHTML(cid, l.dialogue) + '</section>' : '') +
+      referenceAudioHTML(l) +
       '<section class="card"><h2>' + (l.kind === 'script' ? '字和词' : '本课生词') + '</h2>' + words + '</section>' +
       (tips ? '<section class="tips-sec"><h2>发音、语法与文化讲解</h2><div class="tips-grid">' + tips + '</div></section>' : '') +
       (l.source ? '<p class="src">来源：' + (l.source.url ? '<a href="' + esc(l.source.url) + '" target="_blank" rel="noopener">' + esc(l.source.title) + '</a>' : esc(l.source.title)) + '</p>' : ''), cid);
@@ -556,6 +580,8 @@
     if (!e.target.closest('.gloss-pop')) pop.hidden = true;
     var play = e.target.closest('.play[data-src]');
     if (play) LX.playAudio(play.dataset.src);
+    var referenceReplay = e.target.closest('.reference-replay[data-src]');
+    if (referenceReplay) LX.playAudio(referenceReplay.dataset.src);
     var rec = e.target.closest('.rec');
     if (rec) recorder(rec);
   });

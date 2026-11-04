@@ -154,6 +154,20 @@ small { color: var(--muted); font-size: .86rem; }
 .mini-btn { font: inherit; font-size: .82rem; font-weight: 600; border: 1px solid var(--line-strong); background: var(--card-solid); color: var(--muted); border-radius: 999px; padding: .2rem .68rem; cursor: pointer; white-space: nowrap; }
 .mini-btn:hover { border-color: var(--accent); color: var(--accent); }
 .mini-btn.on { background: var(--bad); color: #fff; border-color: var(--bad); }
+.reference-audio { margin-top: 1rem; }
+.reference-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.reference-head h2 { margin-top: 0; }
+.reference-list { display: grid; gap: .7rem; }
+.reference-track { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: .75rem; align-items: center; padding: .8rem; background: var(--card-solid); border: 1px solid var(--line); border-radius: 12px; }
+.reference-copy { display: flex; flex-direction: column; gap: .12rem; }
+.reference-copy strong { font-size: 1.2rem; }
+.reference-track audio { width: min(280px, 42vw); max-width: 100%; }
+.reference-actions { display: flex; gap: .4rem; }
+@media (max-width: 700px) {
+  .reference-track { grid-template-columns: 1fr; }
+  .reference-track audio { width: 100%; }
+  .reference-actions { justify-content: flex-start; }
+}
 .cc-actions { display: flex; flex-wrap: wrap; gap: .55rem; margin: .75rem 0 0; align-items: center; }
 
 /* 首页 Hero 与 6 栏 Bento 课程网格 */
